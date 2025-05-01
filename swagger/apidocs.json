@@ -1,0 +1,72 @@
+{
+    "openapi":"3.0.0",
+    "info":{
+        "title":"API INFORSA",
+        "description":"Seluruh API yang digunakan pada INFORSA",
+        "version":"1.0.0"
+    },
+    "servers":[
+        {
+            "url":"http://localhost:8000",
+            "description":"localhost"
+        },
+        {
+            "url":"https://api.inforsa-unmul.org",
+            "description":"develop"
+        }
+    ],
+    "tags":[
+        {
+            "name":"Web INFORSA",
+            "desription":"Endpoint untuk website official INFORSA UNMUL"
+        },
+        {
+            "name":"Web INSEVENT",
+            "desription":"Endpoint untuk website official INSEVENT"
+        }
+    ],
+    "paths":{
+        "/insevent/get":{
+            "get":{
+                "tags":[
+                    "Web INSEVENT"    
+                ],
+                "summary":"Get All Data for Event on INSEVENT",
+                "description":"API ini untuk mendapatkan semua data event yang dimiliki INSEVENT",
+                "responses":{
+                    "200":{
+                        "descirption":"Sukses"
+                    }
+                }
+            }
+        },
+        "/insevent/get/lomba":{
+            "get":{
+                "tags":[
+                    "Web INSEVENT"    
+                ],
+                "summary":"Get Competition on INSEVENT",
+                "description":"API ini untuk mendapatkan semua lomba yang dimiliki INSEVENT",
+                "responses":{
+                    "200":{
+                        "descirption":"Sukses"
+                    }
+                }
+            }
+        },
+        "/insevent/get/peserta":{
+            "get":{
+                "tags":[
+                    "Web INSEVENT"    
+                ],
+                "summary":"Get Participant on INSEVENT",
+                "description":"API ini untuk mendapatkan semua peserta yang dimiliki INSEVENT",
+                "responses":{
+                    "200":{
+                        "descirption":"Sukses"
+                    }
+                }
+            }
+        }
+    }
+}
