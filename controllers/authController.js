@@ -21,7 +21,7 @@ exports.login = (req, res) => {
             if (match) {
               // Password cocok, buat token JWT
               const token = jwt.sign({ username: user.username, role: user.role }, 'INFORSA', { expiresIn: '1h' });
-              console.log("Token yang dikirim: ", token); 
+              // console.log("Token yang dikirim: ", token); 
               res.json({ token });
             } else {
               // Password tidak cocok
