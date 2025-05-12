@@ -1,0 +1,9 @@
+const db = require('../config/db');
+
+exports.getUser = (req, res) => {
+    const sql = 'SELECT * FROM user ORDER BY role';
+    db.query(sql, (err, result) => {
+      if (err) return res.status(500).send(err);
+      res.send(result);
+    });
+  };

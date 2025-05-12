@@ -9,6 +9,7 @@ const inseventRoutes = require('./routes/inseventRoutes');
 const nilaiRoutes = require('./routes/performanceRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const deptRoutes = require('./routes/deptRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const server = express();
 
@@ -26,6 +27,7 @@ server.use('/insevent', inseventRoutes);
 server.use('/penilaian', nilaiRoutes);
 server.use('/staff', staffRoutes);
 server.use('/dept', deptRoutes);
+server.use('/user', userRoutes);
 
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
