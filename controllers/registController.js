@@ -1,30 +1,45 @@
 const bcrypt = require('bcrypt');
-const db = require('../config/database'); // sesuaikan dengan file config DB kamu
+const db = require('../config/db');
 
-exports.register = async (req, res) => {
-  const { username, password } = req.body;
+exports.registerStaff = async (req, res) => {
+  const { username, password, nim, gender, depart_id } = req.body;
+  const gambar = req.file?.filename; // File yang di-upload
 
   try {
-    // Cek apakah user sudah ada
+    // Cek apakah username sudah ada
     const sqlCheck = "SELECT * FROM user WHERE username = ?";
     db.query(sqlCheck, [username], async (err, result) => {
+      if (err) return res.status(500).json({ message: "DB Error saat cek user" });
       if (result.length > 0) {
         return res.status(400).json({ message: "Username sudah terdaftar" });
       }
-
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-      const sqlInsert = "INSERT INTO user (username, Password) VALUES (?, ?)";
-      db.query(sqlInsert, [username, hashedPassword], (err, result) => {
+
+      // Simpan ke tabel user
+      const sqlInsertUser = "INSERT INTO user (username, password, role) VALUES (?, ?, ?)";
+      db.query(sqlInsertUser, [username, hashedPassword, 3], (err, resultUser) => {
         if (err) {
-          console.error("DB Error:", err);
-          return res.status(500).json({ message: "Gagal menyimpan user" });
+          console.error("DB Error (anggota):", err);
+          return res.status(500).json({ message: "Gagal menyimpan anggota" });
         }
 
-        res.status(201).json({ message: "Registrasi berhasil!" });
+        const userId = resultUser.insertId;
+
+        // Simpan ke tabel anggota
+        const sqlInsertAnggota = "INSERT INTO anggota (user_id, nama_staff, nim, gender, depart_id, gambar) VALUES (?, ?, ?, ?, ?, ?)";
+        db.query(sqlInsertAnggota, [userId, username, nim, gender, depart_id, gambar], async (err) => {
+          if (err) {
+            console.error("DB Error (user):", err);
+            return res.status(500).json({ message: "Gagal menyimpan anggota" });
+          }
+
+          res.status(201).json({ message: "Registrasi berhasil!" });
+        });
       });
     });
   } catch (error) {
-    res.status(500).json({ message: "Terjadi kesalahan" });
+    console.error("Catch Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan server" });
   }
 };

@@ -38,8 +38,9 @@ exports.login = (req, res) => {
     });
 };
 
-exports.register = async (req, res) => {
+exports.registerAdmin = async (req, res) => {
     const { username, password, role } = req.body;
+    console.log("Password dari req.body:", password);
   
     try {
       // Cek apakah user sudah ada
@@ -56,8 +57,15 @@ exports.register = async (req, res) => {
   
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
+        var roleChoosen = 1;
+        if (role === "BPI"){
+          roleChoosen = 1;
+        }else{
+          roleChoosen = 2;
+        }
+        console.log(roleChoosen);
         const sqlInsert = "INSERT INTO user (username, password, role) VALUES (?, ?, ?)";
-        db.query(sqlInsert, [username, hashedPassword, role], (err, result) => {
+        db.query(sqlInsert, [username, hashedPassword, roleChoosen], (err, result) => {
           if (err) {
             console.error("DB Error:", err); // Menampilkan error DB ke console
             return res.status(500).json({ message: "Gagal menyimpan user" });
