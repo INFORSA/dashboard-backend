@@ -40,7 +40,6 @@ exports.login = (req, res) => {
 
 exports.registerAdmin = async (req, res) => {
     const { username, password, role } = req.body;
-    console.log("Password dari req.body:", password);
   
     try {
       // Cek apakah user sudah ada
@@ -63,7 +62,6 @@ exports.registerAdmin = async (req, res) => {
         }else{
           roleChoosen = 2;
         }
-        console.log(roleChoosen);
         const sqlInsert = "INSERT INTO user (username, password, role) VALUES (?, ?, ?)";
         db.query(sqlInsert, [username, hashedPassword, roleChoosen], (err, result) => {
           if (err) {
