@@ -4,7 +4,7 @@ const db = require('../config/db');
 
 exports.login = (req, res) => {
     const { username, password } = req.body;
-      const sqlSelect = "SELECT * FROM user WHERE username = ?";
+      const sqlSelect = "SELECT user.*, role.nama_role FROM user JOIN role ON user.role = role.id_role WHERE user.username = ?";
       db.query(sqlSelect, [username], async (err, result) => {
         if (err) {
           console.error('Server error:', err);
@@ -20,9 +20,14 @@ exports.login = (req, res) => {
     
             if (match) {
               // Password cocok, buat token JWT
-              const token = jwt.sign({ username: user.username, role: user.role }, 'INFORSA', { expiresIn: '1h' });
-              // console.log("Token yang dikirim: ", token); 
-              res.json({ token });
+              const token = jwt.sign({ username: user.username, role: user.nama_role }, 'INFORSA', { expiresIn: '1h' });
+              res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 1000,
+              });
+              res.json({ message: 'Login sukses'});
             } else {
               // Password tidak cocok
               res.status(401).json({ message: 'Invalid username or password' });
@@ -36,6 +41,21 @@ exports.login = (req, res) => {
           res.status(401).json({ message: 'Invalid username or password' });
         }
     });
+};
+
+exports.logout = (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logout berhasil' });
+};
+
+exports.me = (req, res) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ message: "Tidak ada token" });
+
+  jwt.verify(token, "INFORSA", (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Token tidak valid" });
+    res.json({ username: decoded.username, role: decoded.role });
+  });
 };
 
 exports.registerAdmin = async (req, res) => {
