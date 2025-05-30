@@ -12,7 +12,7 @@ exports.getUser = (req, res) => {
   };
 
 exports.getAnggota = (req, res) => {
-    const sql = 'SELECT anggota.*, departemen.nama as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart ORDER BY anggota.depart_id';
+    const sql = 'SELECT anggota.*, departemen.nama as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart ORDER BY anggota.depart_id, anggota.nim ASC';
     db.query(sql, (err, result) => {
       if (err) return res.status(500).send(err);
       res.send(result);

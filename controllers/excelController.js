@@ -2,7 +2,7 @@ const XLSX = require("xlsx");
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
 
-exports.importExcel = async (req, res) => {
+exports.importAnggota = async (req, res) => {
   try {
     const buffer = req.file.buffer;
     const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -10,13 +10,14 @@ exports.importExcel = async (req, res) => {
 
     const results = [];
 
-    for (let row = 2; row <= 94; row++) {
+    for (let row = 2; row <= 139; row++) {
       const nimCell = sheet[`C${row}`];
-      const usernameCell = sheet[`D${row}`];
+      const usernameCell = sheet[`B${row}`];
+      const departCell = sheet[`D${row}`];
 
       const nim = nimCell?.v?.toString().trim();
       const username = usernameCell?.v?.toString().trim();
-      const depart_id = 1;
+      const depart_id = departCell?.v?.toString().trim();
       const gender = null; // gender tidak tersedia
 
       if (!username || !nim || !depart_id) {
@@ -62,6 +63,61 @@ exports.importExcel = async (req, res) => {
             (err) => {
               if (err) return reject(err);
               resolve();
+            }
+          );
+        });
+
+        results.push({ username, status: "success", message: "Data berhasil disimpan" });
+      } catch (insertErr) {
+        console.error("Insert error:", insertErr);
+        results.push({ username, status: "failed", message: "Gagal insert data" });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Import selesai",
+      summary: results,
+    });
+  } catch (err) {
+    console.error("Fatal error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.importUser = async (req, res) => {
+  try {
+    const buffer = req.file.buffer;
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[1]];
+
+    const results = [];
+
+    for (let row = 2; row <= 20; row++) {
+      const nimCell = sheet[`C${row}`];
+      const usernameCell = sheet[`B${row}`];
+      const roleCell = sheet[`D${row}`];
+
+      const nim = nimCell?.v?.toString().trim();
+      const username = usernameCell?.v?.toString().trim();
+      const role = roleCell?.v?.toString().trim();
+
+      if (!username || !nim) {
+        results.push({ username: username || "-", status: "failed", message: "Data tidak lengkap" });
+        continue;
+      }
+
+      try {
+        const hashedPassword = await bcrypt.hash(nim, 10); // Password = NIM
+
+        // Simpan ke user
+        await new Promise((resolve, reject) => {
+          db.query(
+            "INSERT INTO user (username, password, role) VALUES (?, ?, ?)",
+            [username, hashedPassword, role],
+            (err, result) => {
+              if (err) return reject(err);
+              resolve(result);
             }
           );
         });
