@@ -9,24 +9,12 @@ exports.getStaff = (req, res) => {
 };
 
 exports.getNilai = (req, res) => {
-  const sql = `SELECT 
-      p.id_penilaian,
-      p.anggota_id,
-      p.waktu,
-      d.id_detail_penilaian,
-      d.matriks_id,
-      m.nama AS nama_matriks,
-      m.bobot,
-      d.nilai
-    FROM 
-      penilaian p
-    JOIN 
-      detail_penilaian d ON p.id_penilaian = d.penilaian_id
-    JOIN 
-      matriks_penilaian m ON d.matriks_id = m.id_matriks
-    ORDER BY 
-      p.anggota_id, p.waktu, m.id_matriks`;
-  db.query(sql, (err, result) => {
+  const { depart } = req.params;
+  const sql = `SELECT
+              nama_anggota, nama_departemen, MONTHNAME(waktu) AS waktu,
+              nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
+              nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7, total_nilai FROM view_penilaian_anggota WHERE nama_departemen = ?`;
+  db.query(sql, [depart], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send(result);
   });

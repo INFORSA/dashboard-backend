@@ -6,6 +6,6 @@ const authorize = require('../middleware/authorize');
 
 // Route yang dilindungi
 router.get('/get', authenticate, authorize('readAny', 'penilaian'), getStaff);
-router.get('/nilai', authenticate, authorize('readAny', 'penilaian'), getNilai);
+router.get('/get/nilai/:depart', authenticate, authorize('readAny', 'penilaian'), getNilai);
 
 module.exports = router;
