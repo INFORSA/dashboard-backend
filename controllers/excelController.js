@@ -139,3 +139,83 @@ exports.importUser = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.importPenilaian = async (req, res) => {
+  try {
+    const buffer = req.file.buffer;
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    
+    const results = [];
+    const waktu = new Date(); // atau ambil dari Excel jika ada
+
+    for (let row = 2; row <= 139; row++) {
+      const namaCell = sheet[`A${row}`]; // misal kolom A = nama staff
+      const nama_staff = namaCell?.v?.toString().trim();
+
+      const nilaiMatriks = [];
+      for (let i = 0; i < 7; i++) {
+        const col = String.fromCharCode("B".charCodeAt(0) + i); // kolom B → H
+        const cell = sheet[`${col}${row}`];
+        nilaiMatriks.push(parseFloat(cell?.v || 0));
+      }
+
+      if (!nama_staff || nilaiMatriks.some(isNaN)) {
+        results.push({ nama: nama_staff || "-", status: "failed", message: "Data tidak lengkap" });
+        continue;
+      }
+
+      // 1. Ambil anggota_id
+      const [anggota] = await new Promise((resolve, reject) => {
+        db.query("SELECT id_anggota FROM anggota WHERE nama_staff = ?", [nama_staff], (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+      });
+
+      if (!anggota) {
+        results.push({ nama: nama_staff, status: "failed", message: "Nama tidak ditemukan di tabel anggota" });
+        continue;
+      }
+
+      // 2. Insert ke penilaian
+      const penilaianResult = await new Promise((resolve, reject) => {
+        db.query("INSERT INTO penilaian (anggota_id, waktu) VALUES (?, ?)", [anggota.id_anggota, waktu], (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+      });
+
+      const penilaian_id = penilaianResult.insertId;
+
+      // 3. Insert ke detail_penilaian (loop matriks_id 1–7)
+      for (let i = 0; i < 7; i++) {
+        const matriks_id = i + 1;
+        const nilai = nilaiMatriks[i];
+
+        await new Promise((resolve, reject) => {
+          db.query(
+            "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, ?)",
+            [penilaian_id, matriks_id, nilai],
+            (err) => {
+              if (err) return reject(err);
+              resolve();
+            }
+          );
+        });
+      }
+
+      results.push({ nama: nama_staff, status: "success", message: "Penilaian berhasil disimpan" });
+    }
+
+    res.json({
+      success: true,
+      message: "Import penilaian selesai",
+      summary: results,
+    });
+
+  } catch (err) {
+    console.error("Fatal error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
