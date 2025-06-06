@@ -2,6 +2,21 @@ const XLSX = require("xlsx");
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
 
+const MONTHS_MAP = {
+  januari:1,
+  februari:2,
+  maret: 3,
+  april: 4,
+  mei: 5,
+  juni: 6,
+  juli: 7,
+  agustus: 8,
+  september: 9,
+  oktober: 10,
+  november: 11,
+  desember: 12
+};
+
 exports.importAnggota = async (req, res) => {
   try {
     const buffer = req.file.buffer;
@@ -144,73 +159,130 @@ exports.importPenilaian = async (req, res) => {
   try {
     const buffer = req.file.buffer;
     const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    
+
     const results = [];
-    const waktu = new Date(); // atau ambil dari Excel jika ada
 
-    for (let row = 2; row <= 139; row++) {
-      const namaCell = sheet[`A${row}`]; // misal kolom A = nama staff
-      const nama_staff = namaCell?.v?.toString().trim();
-
-      const nilaiMatriks = [];
-      for (let i = 0; i < 7; i++) {
-        const col = String.fromCharCode("B".charCodeAt(0) + i); // kolom B → H
-        const cell = sheet[`${col}${row}`];
-        nilaiMatriks.push(parseFloat(cell?.v || 0));
-      }
-
-      if (!nama_staff || nilaiMatriks.some(isNaN)) {
-        results.push({ nama: nama_staff || "-", status: "failed", message: "Data tidak lengkap" });
+    for (const sheetName of workbook.SheetNames) {
+      const lowerSheetName = sheetName.toLowerCase();
+      if (!MONTHS_MAP[lowerSheetName]) {
+        results.push({ sheet: sheetName, status: "skipped", message: "Nama sheet tidak sesuai bulan" });
         continue;
       }
 
-      // 1. Ambil anggota_id
-      const [anggota] = await new Promise((resolve, reject) => {
-        db.query("SELECT id_anggota FROM anggota WHERE nama_staff = ?", [nama_staff], (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-      });
+      const month = MONTHS_MAP[lowerSheetName];
+      const waktu = new Date(2025, month - 1, 1); // 1 Maret 2025, 1 April 2025, dst.
 
-      if (!anggota) {
-        results.push({ nama: nama_staff, status: "failed", message: "Nama tidak ditemukan di tabel anggota" });
-        continue;
-      }
+      const sheet = workbook.Sheets[sheetName];
+      let lastNamaStaff = null;
 
-      // 2. Insert ke penilaian
-      const penilaianResult = await new Promise((resolve, reject) => {
-        db.query("INSERT INTO penilaian (anggota_id, waktu) VALUES (?, ?)", [anggota.id_anggota, waktu], (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-      });
+      for (let row = 18; row <= 72; row++) { //sesuaikan baris maksimal anggota penilaian
+        const namaCell = sheet[`C${row}`];
+        const penilaiCell = sheet[`B${row}`];
+        const nama_staff = namaCell?.v?.toString().trim() || lastNamaStaff;
+        const penilai = penilaiCell?.v?.toString().trim();
 
-      const penilaian_id = penilaianResult.insertId;
+        if (namaCell?.v) {
+          lastNamaStaff = nama_staff; // simpan nama terakhir jika cell-nya punya isi
+        }
 
-      // 3. Insert ke detail_penilaian (loop matriks_id 1–7)
-      for (let i = 0; i < 7; i++) {
-        const matriks_id = i + 1;
-        const nilai = nilaiMatriks[i];
+        const nilaiMatriks = [];
+        for (let i = 0; i < 7; i++) {
+          const col = String.fromCharCode("D".charCodeAt(0) + i); // D to J
+          const cell = sheet[`${col}${row}`];
+          nilaiMatriks.push(parseFloat(cell?.v || 0));
+        }
 
-        await new Promise((resolve, reject) => {
+        if (!nama_staff || nilaiMatriks.some(isNaN)) {
+          results.push({
+            sheet: sheetName,
+            nama: nama_staff || "-",
+            status: "failed",
+            message: "Data tidak lengkap"
+          });
+          continue;
+        }
+
+        // 1. Ambil pengurus_id dan anggota_id
+        const [pengurus] = await new Promise((resolve, reject) => {
           db.query(
-            "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, ?)",
-            [penilaian_id, matriks_id, nilai],
-            (err) => {
+            "SELECT id_pengurus FROM pengurus WHERE keterangan = ?",
+            [penilai],
+            (err, result) => {
               if (err) return reject(err);
-              resolve();
+              resolve(result);
             }
           );
         });
-      }
 
-      results.push({ nama: nama_staff, status: "success", message: "Penilaian berhasil disimpan" });
+        if (!pengurus) {
+          results.push({
+            nama: nama_staff,
+            status: "failed",
+            message: `Keterangan pengurus '${penilai}' tidak ditemukan`,
+          });
+          continue;
+        }
+
+        const [anggota] = await new Promise((resolve, reject) => {
+          db.query("SELECT id_anggota FROM anggota WHERE nama_staff = ?", [nama_staff], (err, result) => {
+            if (err) return reject(err);
+              resolve(result);
+          });
+        });
+
+        if (!anggota) {
+          results.push({
+            sheet: sheetName,
+            nama: nama_staff,
+            status: "failed",
+            message: "Nama tidak ditemukan di tabel anggota"
+          });
+          continue;
+        }
+
+        // 2. Insert ke penilaian
+        const penilaianResult = await new Promise((resolve, reject) => {
+          db.query(
+            "INSERT INTO penilaian (anggota_id, waktu, pengurus_id) VALUES (?, ?, ?)",
+            [anggota.id_anggota, waktu, pengurus.id_pengurus],
+            (err, result) => {
+              if (err) return reject(err);
+              resolve(result);
+            }
+          );
+        });
+
+        const penilaian_id = penilaianResult.insertId;
+
+        // 3. Insert ke detail_penilaian
+        for (let i = 0; i < 7; i++) {
+          const matriks_id = i + 1;
+          const nilai = nilaiMatriks[i];
+
+          await new Promise((resolve, reject) => {
+            db.query(
+              "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, ?)",
+              [penilaian_id, matriks_id, nilai],
+              (err) => {
+                if (err) return reject(err);
+                resolve();
+              }
+            );
+          });
+        }
+
+        results.push({
+          sheet: sheetName,
+          nama: nama_staff,
+          status: "success",
+          message: "Penilaian berhasil disimpan"
+        });
+      }
     }
 
     res.json({
       success: true,
-      message: "Import penilaian selesai",
+      message: "Import penilaian dari semua sheet selesai",
       summary: results,
     });
 

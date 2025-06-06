@@ -6,8 +6,8 @@ const authorize = require('../middleware/authorize');
 
 // Route yang dilindungi
 router.get('/get', authenticate, authorize('readAny', 'penilaian'), getStaff);
-router.get('/get/all/nilai', authenticate, authorize('readAny', 'penilaian'), getAllNilai);
-router.get('/get/nilai/:depart', authenticate, authorize('readAny', 'penilaian'), getNilai);
+router.get('/get/all/nilai/:month', authenticate, authorize('readAny', 'penilaian'), getAllNilai);
+router.get('/get/nilai/:depart/:month', authenticate, authorize('readAny', 'penilaian'), getNilai);
 router.get('/get/linechart', authenticate, authorize('readAny', 'penilaian'), getLineChart);
 router.get('/get/linechart/:depart', authenticate, authorize('readAny', 'penilaian'), getLineChart2);
 router.get('/get/barchart/:depart', authenticate, authorize('readAny', 'penilaian'), getBarChart);
