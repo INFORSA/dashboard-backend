@@ -52,9 +52,29 @@ exports.me = (req, res) => {
   const token = req.cookies.token;
   if (!token) return res.status(401).json({ message: "Tidak ada token" });
 
-  jwt.verify(token, "INFORSA", (err, decoded) => {
+  jwt.verify(token, "INFORSA", async(err, decoded) => {
     if (err) return res.status(403).json({ message: "Token tidak valid" });
-    res.json({ username: decoded.username, role: decoded.role });
+    const { username, role } = decoded;
+
+    if(role === "admin"){
+      const sql = `
+        SELECT departemen.nama AS nama_departemen 
+        FROM user 
+        LEFT JOIN pengurus ON user.id_user = pengurus.user_id
+        LEFT JOIN departemen ON pengurus.dept_id = departemen.id_depart
+        WHERE user.username = ?
+        LIMIT 1
+      `;
+
+      db.query(sql, [username], (err, results) => {
+        if (err) return res.status(500).json({ message: "Gagal mengambil data departemen" });
+
+        const departemen = results[0]?.nama_departemen || null;
+        return res.json({ username, role, departemen });
+      });
+    }else{
+      res.json({ username, role });
+    }
   });
 };
 

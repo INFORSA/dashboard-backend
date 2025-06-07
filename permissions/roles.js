@@ -15,6 +15,7 @@ ac.grant('admin')
   .createAny('penilaian')
   .updateAny('penilaian')
   .deleteAny('penilaian')
+  .readAny('penilaian')
   .readAny('profile');
 
 ac.grant('superadmin')
