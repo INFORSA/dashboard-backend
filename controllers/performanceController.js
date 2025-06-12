@@ -153,7 +153,7 @@ exports.getPersonalNilai = (req, res) => {
 
 exports.getRadarChart = (req, res) => {
   const { depart } = req.params;
-  const sql = `SELECT * FROM view_perbandingan_penilaian WHERE nama_departemen = ?`;
+  const sql = `SELECT * FROM vw_penilaian_anggota_per_departemen WHERE nama_departemen = ? ORDER BY rata_rata DESC LIMIT 5`;
   db.query(sql, [depart], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send(result);
