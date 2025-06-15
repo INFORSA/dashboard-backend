@@ -15,11 +15,30 @@ const importRoutes = require('./routes/importRoutes');
 
 const server = express();
 
-server.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://zslnjmx0-5173.asse.devtunnels.ms"
+];
+
 server.use(cors({
-  origin: "http://localhost:5173",  
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS: " + origin));
+    }
+  },
   credentials: true
 }));
+
+server.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+server.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 server.use(bodyParser.urlencoded({ extended: true }));
 server.use(express.json());
 server.use(cookieParser()); 

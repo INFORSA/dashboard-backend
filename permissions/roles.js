@@ -6,9 +6,7 @@ ac.grant('user')
 
 ac.grant('staff')
   .extend('user')
-  .readOwn('penilaian') 
-  .createOwn('penilaian')
-  .updateOwn('penilaian');
+  .readOwn('penilaian');
 
 ac.grant('admin')
   .extend('staff')
@@ -21,5 +19,9 @@ ac.grant('admin')
 ac.grant('superadmin')
     .extend('admin')
     .readAny('penilaian');
+
+ac.grant('dosen')
+  .extend('user')
+  .readAny('penilaian');
 
 module.exports = ac;

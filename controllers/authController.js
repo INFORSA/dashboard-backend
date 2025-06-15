@@ -23,8 +23,15 @@ exports.login = (req, res) => {
               const token = jwt.sign({ username: user.username, role: user.nama_role }, 'INFORSA', { expiresIn: '1h' });
               res.cookie('token', token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+
+                //Local
+                // secure: process.env.NODE_ENV === 'production',
+                // sameSite: 'strict',
+
+                //Tes Production
+                secure: true,
+                sameSite: 'None',
+                
                 maxAge: 60 * 60 * 1000,
               });
               res.json({ message: 'Login sukses'});
@@ -44,7 +51,11 @@ exports.login = (req, res) => {
 };
 
 exports.logout = (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: true,   
+    sameSite: 'none',
+  });
   res.json({ message: 'Logout berhasil' });
 };
 
@@ -58,7 +69,7 @@ exports.me = (req, res) => {
 
     if(role === "admin"){
       const sql = `
-        SELECT departemen.nama AS nama_departemen 
+        SELECT departemen.nama AS nama_departemen, pengurus.keterangan AS keterangan
         FROM user 
         LEFT JOIN pengurus ON user.id_user = pengurus.user_id
         LEFT JOIN departemen ON pengurus.dept_id = departemen.id_depart
@@ -70,7 +81,8 @@ exports.me = (req, res) => {
         if (err) return res.status(500).json({ message: "Gagal mengambil data departemen" });
 
         const departemen = results[0]?.nama_departemen || null;
-        return res.json({ username, role, departemen });
+        const keterangan = results[0]?.keterangan || null;
+        return res.json({ username, role, departemen, keterangan });
       });
     }else{
       res.json({ username, role });
@@ -97,10 +109,12 @@ exports.registerAdmin = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         var roleChoosen = 1;
-        if (role === "BPI"){
+        if (role === "BPI" || role === "MPKO"){
           roleChoosen = 1;
-        }else{
+        }else if(role === "BPH"){
           roleChoosen = 2;
+        }else{
+          roleChoosen = 4
         }
         const sqlInsert = "INSERT INTO user (username, password, role) VALUES (?, ?, ?)";
         db.query(sqlInsert, [username, hashedPassword, roleChoosen], (err, result) => {
