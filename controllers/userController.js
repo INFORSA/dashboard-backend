@@ -15,7 +15,10 @@ const db = require('../config/db');
       const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart ORDER BY anggota.depart_id, anggota.nim ASC';
       db.query(sql, (err, result) => {
         if (err) return res.status(500).send(err);
-        res.send(result);
+        res.send({
+          data : result,
+          total : result.length
+        });
       });
     };
 
@@ -33,7 +36,10 @@ const db = require('../config/db');
     const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen, departemen.nama as depart FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart WHERE departemen.nama = ? ORDER BY anggota.depart_id, anggota.nim ASC';
     db.query(sql, [depart], (err, result) => {
       if (err) return res.status(500).send(err);
-      res.send(result);
+      res.send({
+          data : result,
+          total : result.length
+        });
     });
   };
 

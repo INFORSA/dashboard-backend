@@ -175,7 +175,7 @@ exports.importPenilaian = async (req, res) => {
       const sheet = workbook.Sheets[sheetName];
       let lastNamaStaff = null;
 
-      for (let row = 18; row <= 72; row++) { //sesuaikan baris maksimal anggota penilaian
+      for (let row = 18; row <= 61; row++) { //sesuaikan baris maksimal anggota penilaian
         const namaCell = sheet[`C${row}`];
         const penilaiCell = sheet[`B${row}`];
         const nama_staff = namaCell?.v?.toString().trim() || lastNamaStaff;
