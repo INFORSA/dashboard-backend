@@ -12,15 +12,71 @@ const db = require('../config/db');
     };
 
   exports.getAnggota = (req, res) => {
-      const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart ORDER BY anggota.depart_id, anggota.nim ASC';
-      db.query(sql, (err, result) => {
-        if (err) return res.status(500).send(err);
-        res.send({
-          data : result,
-          total : result.length
+    const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart ORDER BY anggota.depart_id, anggota.nim ASC';
+    db.query(sql, (err, result) => {
+      if (err) return res.status(500).send(err);
+      res.send({
+        data : result,
+        total : result.length
+      });
+    });
+  };
+
+  // STORE ROLE 
+  exports.storeUser = async (req, res) => {
+    const { id } = req.params;
+    const sqlFind = "SELECT * FROM user WHERE id_user = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (rows.length === 0)
+        return res.status(404).json({ message: "User tidak ditemukan" });
+
+      res.json(rows[0]); 
+    });
+  };
+
+  // STORE ROLE 
+  exports.storeAnggota = async (req, res) => {
+    const { id } = req.params;
+    const sqlFind = "SELECT * FROM anggota WHERE user_id = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (rows.length === 0)
+        return res.status(404).json({ message: "Role tidak ditemukan" });
+
+      res.json(rows[0]); 
+    });
+  };
+
+  exports.deleteUser = async (req, res) => {
+    const { id } = req.params;       
+
+    try {
+      const sqlFind = "SELECT * FROM user WHERE id_user = ?";
+      db.query(sqlFind, [id], (err, rows) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal memeriksa user" });
+        }
+        if (rows.length === 0) {
+          return res.status(404).json({ message: "User tidak ditemukan" });
+        }
+
+        // Hapus
+        const sqlDelete = "DELETE FROM user WHERE id_user = ?";
+        db.query(sqlDelete, [id], (err) => {
+          if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ message: "Gagal menghapus user" });
+          }
+          res.json({ message: "Hapus User berhasil!" });
         });
       });
-    };
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    }
+  };
 
   exports.getAnggotaByNama = (req, res) => {
       const { nama } = req.params;

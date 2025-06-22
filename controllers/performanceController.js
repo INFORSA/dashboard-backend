@@ -118,7 +118,7 @@ exports.getNilai = (req, res) => {
 
 exports.getNilaiByPenilai = (req, res) => {
   const { depart, month, penilai } = req.params;
-  const sql = `SELECT nama_anggota, nama_departemen, MONTHNAME(waktu) AS waktu,
+  const sql = `SELECT nama_anggota, nama_departemen, MONTHNAME(waktu) AS bulan,
               nilai_matriks_1, 
               nilai_matriks_2, 
               nilai_matriks_3,
@@ -139,21 +139,70 @@ exports.getNilaiByPenilai = (req, res) => {
 
 exports.getAllNilai = (req, res) => {
   const { month } = req.params;
-  const sql = `SELECT
-              nama_anggota, nama_departemen, MONTHNAME(waktu) AS waktu,  
-              SUM(nilai_matriks_1) AS nilai_matriks_1, 
-              SUM(nilai_matriks_2) AS nilai_matriks_2, 
-              SUM(nilai_matriks_3) AS nilai_matriks_3,
-              SUM(nilai_matriks_4) AS nilai_matriks_4, 
-              SUM(nilai_matriks_5) AS nilai_matriks_5, 
-              SUM(nilai_matriks_6) AS nilai_matriks_6, 
-              SUM(nilai_matriks_7) AS nilai_matriks_7, SUM(total_nilai) AS total_nilai FROM view_penilaian_anggota
-              WHERE MONTH(waktu) = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())
-              GROUP BY nama_anggota, nama_departemen, waktu
-              ORDER BY nama_anggota`;
-  db.query(sql, [month], (err, result) => {
+  const sql = `SELECT keterangan_penilai, nama_anggota, nama_departemen, MONTHNAME(waktu) AS bulan, 
+           waktu, anggota_id, penilai, 
+           nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
+           nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
+    FROM view_penilaian_anggota 
+    WHERE MONTH(waktu) = ? 
+      AND YEAR(waktu) = YEAR(CURRENT_DATE())
+    ORDER BY anggota_id, waktu`;
+  db.query(sql, [month], (err, rows) => {
     if (err) return res.status(500).send(err);
-    res.send(result);
+
+    const grouped = {};
+
+    rows.forEach(row => {
+      const key = row.anggota_id;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+
+    const finalResult = [];
+
+    for (const anggotaId in grouped) {
+      const penilaianList = grouped[anggotaId];
+
+      // Hitung total nilai akhir berdasarkan bobot
+      const totalPenilai = penilaianList.length;
+
+      // Hitung rata-rata nilai per matriks
+      const totalMatrix = {
+        nilai_matriks_1: 0,
+        nilai_matriks_2: 0,
+        nilai_matriks_3: 0,
+        nilai_matriks_4: 0,
+        nilai_matriks_5: 0,
+        nilai_matriks_6: 0,
+        nilai_matriks_7: 0,
+      };
+
+      penilaianList.forEach(item => {
+        totalMatrix.nilai_matriks_1 += item.nilai_matriks_1 || 0;
+        totalMatrix.nilai_matriks_2 += item.nilai_matriks_2 || 0;
+        totalMatrix.nilai_matriks_3 += item.nilai_matriks_3 || 0;
+        totalMatrix.nilai_matriks_4 += item.nilai_matriks_4 || 0;
+        totalMatrix.nilai_matriks_5 += item.nilai_matriks_5 || 0;
+        totalMatrix.nilai_matriks_6 += item.nilai_matriks_6 || 0;
+        totalMatrix.nilai_matriks_7 += item.nilai_matriks_7 || 0;
+      });
+
+      const rata2 = {};
+      Object.entries(totalMatrix).forEach(([key, value]) => {
+        rata2[key] = parseFloat((value / totalPenilai).toFixed(2));
+      });
+
+      finalResult.push({
+        nama_anggota: penilaianList[0].nama_anggota,
+        nama_departemen: penilaianList[0].nama_departemen,
+        bulan: penilaianList[0].bulan,
+        ...rata2,
+        total_nilai: hitungTotalNilai(penilaianList),
+        total_akhir: parseFloat(hitungTotalNilai(penilaianList)/35*100).toFixed(2),
+      });
+    }
+
+    res.send(finalResult);
   });
 };
 
