@@ -520,6 +520,15 @@ exports.getRadarChart = (req, res) => {
   });
 };
 
+exports.getPersonalRadarChart = (req, res) => {
+  const nama = req.user.username;
+  const sql = `SELECT * FROM vw_penilaian_anggota_per_departemen WHERE nama_anggota = ?`;
+  db.query(sql, [nama], (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send(result);
+  });
+};
+
 exports.getBarChart = (req, res) => {
   const { depart } = req.params;
   const sql = `SELECT

@@ -5,11 +5,13 @@ const upload = require('../middleware/upload');
 
 router.get('/get', getUser);
 router.get('/store/:id', storeUser);
-router.get('/store/anggota/:id', storeAnggota);
 router.delete("/remove/:id", deleteUser);
+
 router.get('/get/anggota', getAnggota);
 router.get('/get/anggota/:nama', getAnggotaByNama);
 router.get('/get/anggota/dept/:depart', getAnggotaByDepart);
+router.get('/store/anggota/:id', storeAnggota);
+
 router.get('/get/role', getRole);
 router.get('/get/role/:id', storeRole);
 router.post('/add/role', upload.none(), addRole);
