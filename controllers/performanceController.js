@@ -52,8 +52,8 @@ exports.getNilai = (req, res) => {
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota 
     WHERE nama_departemen = ?
-      AND MONTH(waktu) = ? 
-      AND YEAR(waktu) = YEAR(CURRENT_DATE())
+    AND MONTH(waktu) = ? 
+    AND YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
     ORDER BY anggota_id, waktu
   `;
 
@@ -144,8 +144,7 @@ exports.getAllNilai = (req, res) => {
            nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota 
-    WHERE MONTH(waktu) = ? 
-      AND YEAR(waktu) = YEAR(CURRENT_DATE())
+    WHERE MONTH(waktu) < MONTH(CURRENT_DATE()) AND DATE_FORMAT(waktu, '%Y-%m') = ? 
     ORDER BY anggota_id, waktu`;
   db.query(sql, [month], (err, rows) => {
     if (err) return res.status(500).send(err);
@@ -280,7 +279,7 @@ exports.getLineChart = (req, res) => {
       nilai_matriks_6,
       nilai_matriks_7
     FROM view_penilaian_anggota
-    WHERE YEAR(waktu) = YEAR(CURRENT_DATE())
+    WHERE YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
   `;
 
   db.query(sql, (err, rows) => {
@@ -335,7 +334,7 @@ exports.getLineChart2 = (req, res) => {
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota
     WHERE nama_departemen = ?
-      AND YEAR(waktu) = YEAR(CURRENT_DATE())
+    AND YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
   `;
 
   db.query(sql, [depart], (err, rows) => {
@@ -392,7 +391,7 @@ exports.getPersonalLineChart = (req, res) => {
               nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
               nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
               FROM view_penilaian_anggota 
-              WHERE YEAR(waktu) = YEAR(CURRENT_DATE()) AND nama_anggota = ?
+              WHERE YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE()) AND nama_anggota = ?
               ORDER BY anggota_id, waktu`;
   db.query(sql, [nama], (err, rows) => {
     const grouped = {};
@@ -436,6 +435,65 @@ exports.getPersonalLineChart = (req, res) => {
         };
     });
 
+    res.send(result);
+  });
+};
+
+exports.getLineChartDept = (req, res) => {
+  const { waktu } = req.params;
+
+  const sql = `
+    SELECT keterangan_penilai, nama_departemen, date_format(waktu, '%Y-%m') AS bulan,
+           anggota_id,
+           nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
+           nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
+    FROM view_penilaian_anggota
+    WHERE DATE_FORMAT(waktu, '%Y-%m') = ?
+  `;
+
+  db.query(sql, [waktu], (err, rows) => {
+    if (err) return res.status(500).send(err);
+
+    const grouped = {};
+
+    rows.forEach(row => {
+      const key = `${row.nama_departemen}-${row.bulan}-${row.anggota_id}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+
+    const departBulanMap = {};
+
+    for (const key in grouped) {
+      const penilaianList = grouped[key]; 
+      const totalNilai = hitungTotalNilai(penilaianList);
+
+      const bulan = penilaianList[0].bulan;
+      const departemen = penilaianList[0].nama_departemen;
+
+      const groupKey = `${departemen}-${bulan}`;
+      if (!departBulanMap[groupKey]) {
+        departBulanMap[groupKey] = {
+          nama_departemen: departemen,
+          bulan: bulan,
+          total_nilai: 0,
+          anggota_set: new Set()
+        };
+      }
+
+      departBulanMap[groupKey].total_nilai += totalNilai;
+      departBulanMap[groupKey].anggota_set.add(penilaianList[0].anggota_id);
+    }
+
+    const result = Object.values(departBulanMap).map(item => {
+        const jumlahAnggota = item.anggota_set.size;
+        const rataRataNilai = jumlahAnggota > 0 ? item.total_nilai / jumlahAnggota : 0;
+        return {
+          nama_departemen: item.nama_departemen,
+          bulan: item.bulan,
+          total_nilai: parseFloat(parseFloat(rataRataNilai.toFixed(2))/35*100).toFixed(2),
+        };
+    });
     res.send(result);
   });
 };
@@ -531,11 +589,7 @@ exports.getPersonalRadarChart = (req, res) => {
 
 exports.getBarChart = (req, res) => {
   const { depart } = req.params;
-  const sql = `SELECT
-              nama_anggota, nama_departemen,
-              nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
-              nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7, total_nilai FROM view_penilaian_anggota WHERE nama_departemen = ? 
-              AND MONTH(waktu) = MONTH(CURRENT_DATE()) AND YEAR(waktu) = YEAR(CURRENT_DATE())`;
+  const sql = `SELECT * FROM vw_penilaian_anggota_per_departemen WHERE nama_departemen = ? ORDER BY rata_rata DESC LIMIT 5`;
   db.query(sql, [depart], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send(result);
