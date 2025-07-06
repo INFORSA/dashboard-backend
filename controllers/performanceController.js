@@ -52,7 +52,7 @@ exports.getNilai = (req, res) => {
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota 
     WHERE nama_departemen = ?
-    AND MONTH(waktu) = ? 
+    AND MONTHNAME(waktu) = ? 
     AND YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
     ORDER BY anggota_id, waktu
   `;
@@ -130,7 +130,7 @@ exports.getNilaiByPenilai = (req, res) => {
               id_detail_matriks_4, id_detail_matriks_5,
               id_detail_matriks_6, id_detail_matriks_7, total_nilai 
               FROM view_penilaian_anggota WHERE nama_departemen = ?
-              AND MONTH(waktu) = ? AND penilai = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())`;
+              AND MONTHNAME(waktu) = ? AND penilai = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())`;
   db.query(sql, [depart, month, penilai], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send(result);
@@ -144,7 +144,7 @@ exports.getAllNilai = (req, res) => {
            nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota 
-    WHERE MONTH(waktu) < MONTH(CURRENT_DATE()) AND DATE_FORMAT(waktu, '%Y-%m') = ? 
+    WHERE MONTH(waktu) < MONTH(CURRENT_DATE()) AND MONTHNAME(waktu) = ? 
     ORDER BY anggota_id, waktu`;
   db.query(sql, [month], (err, rows) => {
     if (err) return res.status(500).send(err);
@@ -223,7 +223,7 @@ exports.getMaxNilai = (req, res) => {
       nilai_matriks_6,
       nilai_matriks_7
     FROM view_penilaian_anggota
-    WHERE MONTH(waktu) = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())
+    WHERE MONTHNAME(waktu) = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())
   `;
 
   db.query(sql, [month], (err, rows) => {
@@ -267,7 +267,7 @@ exports.getMaxNilai = (req, res) => {
 exports.getLineChart = (req, res) => {
   const sql = `
     SELECT 
-      DATE_FORMAT(waktu, '%Y-%m') AS bulan,
+      MONTHNAME(waktu) AS bulan,
       anggota_id,
       nama_anggota,
       keterangan_penilai,
@@ -280,6 +280,7 @@ exports.getLineChart = (req, res) => {
       nilai_matriks_7
     FROM view_penilaian_anggota
     WHERE YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
+    ORDER BY MONTH(waktu)
   `;
 
   db.query(sql, (err, rows) => {
@@ -320,7 +321,7 @@ exports.getLineChart = (req, res) => {
       };
     });
 
-    res.send(result.sort((a, b) => a.bulan.localeCompare(b.bulan)));
+    res.send(result);
   });
 };
 
@@ -328,7 +329,7 @@ exports.getLineChart2 = (req, res) => {
   const { depart } = req.params;
 
   const sql = `
-    SELECT keterangan_penilai, nama_departemen, date_format(waktu, '%Y-%m') AS bulan,
+    SELECT keterangan_penilai, nama_departemen, MONTHNAME(waktu) AS bulan,
            anggota_id,
            nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
@@ -443,12 +444,12 @@ exports.getLineChartDept = (req, res) => {
   const { waktu } = req.params;
 
   const sql = `
-    SELECT keterangan_penilai, nama_departemen, date_format(waktu, '%Y-%m') AS bulan,
+    SELECT keterangan_penilai, nama_departemen, MONTHNAME(waktu) AS bulan,
            anggota_id,
            nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6, nilai_matriks_7
     FROM view_penilaian_anggota
-    WHERE DATE_FORMAT(waktu, '%Y-%m') = ?
+    WHERE MONTHNAME(waktu) = ?
   `;
 
   db.query(sql, [waktu], (err, rows) => {
