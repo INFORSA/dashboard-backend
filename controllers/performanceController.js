@@ -1,5 +1,55 @@
 const db = require('../config/db');
 
+function hitungTotalNilaiDept(penilaianList) {
+  const totalPenilai = penilaianList.length;
+
+  const bobotPerMatriks = {
+    nilai_matriks_1: 0.30,
+    nilai_matriks_2: 0.20,
+    nilai_matriks_3: 0.15,
+    nilai_matriks_4: 0.15,
+    nilai_matriks_5: 0.10,
+    nilai_matriks_6: 0.10,
+  };
+
+  const totalMatrix = {
+    nilai_matriks_1: 0,
+    nilai_matriks_2: 0,
+    nilai_matriks_3: 0,
+    nilai_matriks_4: 0,
+    nilai_matriks_5: 0,
+    nilai_matriks_6: 0,
+  };
+
+  // Hitung total nilai masing-masing matriks
+  penilaianList.forEach(item => {
+    totalMatrix.nilai_matriks_1 += item.nilai_matriks_1 || 0;
+    totalMatrix.nilai_matriks_2 += item.nilai_matriks_2 || 0;
+    totalMatrix.nilai_matriks_3 += item.nilai_matriks_3 || 0;
+    totalMatrix.nilai_matriks_4 += item.nilai_matriks_4 || 0;
+    totalMatrix.nilai_matriks_5 += item.nilai_matriks_5 || 0;
+    totalMatrix.nilai_matriks_6 += item.nilai_matriks_6 || 0;
+  });
+
+  // Hitung rata-rata per matriks
+  const rataRataMatrix = {};
+  Object.entries(totalMatrix).forEach(([key, value]) => {
+    rataRataMatrix[key] = parseFloat((value / totalPenilai).toFixed(2));
+  });
+
+  // Hitung total nilai akhir berdasarkan bobot
+  let totalNilai = 0;
+  Object.entries(bobotPerMatriks).forEach(([key, bobot]) => {
+    totalNilai += rataRataMatrix[key] * bobot;
+  });
+
+  return {
+    rataRataMatrix,
+    totalNilai: parseFloat(totalNilai.toFixed(2)),
+    totalAkhir: parseFloat((totalNilai / 5 * 100).toFixed(2)) // Asumsi total maksimum adalah 4
+  };
+}
+
 function hitungTotalNilai(penilaianList) {
   const totalPenilai = penilaianList.length;
 
@@ -109,6 +159,51 @@ exports.getNilai = (req, res) => {
         ...rata2,
         total_nilai: hitungTotalNilai(penilaianList),
         total_akhir: parseFloat(hitungTotalNilai(penilaianList)/35*100).toFixed(2),
+      });
+    }
+
+    res.send(finalResult);
+  });
+};
+
+exports.getNilaiDept = (req, res) => {
+  const { month } = req.params;
+
+  const sql = `
+    SELECT penilai, jabatan, nama_departemen, MONTHNAME(waktu) AS bulan,
+           nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
+           nilai_matriks_4, nilai_matriks_5, nilai_matriks_6
+    FROM view_penilaian_departemen
+    WHERE MONTHNAME(waktu) = ?
+    AND YEAR(waktu) = YEAR(CURRENT_DATE()) AND MONTH(waktu) < MONTH(CURRENT_DATE())
+    ORDER BY nama_departemen, waktu
+  `;
+
+  db.query(sql, [month], (err, rows) => {
+    if (err) return res.status(500).send(err);
+
+    const grouped = {};
+
+    rows.forEach(row => {
+      const key = row.nama_departemen;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+
+    const finalResult = [];
+
+    for (const departemen in grouped) {
+      const penilaianList = grouped[departemen];
+
+      const { rataRataMatrix, totalNilai, totalAkhir } = hitungTotalNilaiDept(penilaianList);
+
+      finalResult.push({
+        penilai: penilaianList[0].penilai,
+        nama_departemen: penilaianList[0].nama_departemen,
+        bulan: penilaianList[0].bulan,
+        ...rataRataMatrix,
+        total_nilai: totalNilai,
+        total_akhir: totalAkhir
       });
     }
 

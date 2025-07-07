@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getNilai, getStaff, getLineChart, getBarChart, getRadarChart, getLineChart2, getAllNilai, getNilaiByPenilai, getMaxNilai, getPersonalNilai, getPersonalLineChart, updateNilai, getMatriks, storeMatriks, addMatriks, updateMatriks, deleteMatriks, getPersonalRadarChart, getLineChartDept } = require('../controllers/performanceController');
+const { getNilai, getStaff, getLineChart, getBarChart, getRadarChart, getLineChart2, getAllNilai, getNilaiByPenilai, getMaxNilai, 
+        getPersonalNilai, getPersonalLineChart, updateNilai, getMatriks, storeMatriks, addMatriks, updateMatriks, deleteMatriks, 
+        getPersonalRadarChart, getLineChartDept, getNilaiDept } = require('../controllers/performanceController');
 const authenticate = require('../middleware/authMiddleware');
 const authorize = require('../middleware/authorize');
 const upload = require('../middleware/upload');
@@ -17,6 +19,7 @@ router.delete("/remove/matriks/:id", authenticate, authorize('deleteAny', 'penil
 
 router.get('/get/all/nilai/:month', authenticate, authorize('readAny', 'penilaian'), getAllNilai);
 router.get('/get/nilai/:depart/:month', authenticate, authorize('readAny', 'penilaian'), getNilai);
+router.get('/get/nilai-dept/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiDept);
 router.get('/get/max-nilai/:month', authenticate, authorize('readAny', 'penilaian'), getMaxNilai);
 router.get('/get/nilai/:depart/:penilai/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiByPenilai);
 router.get('/get/nilai/personal', authenticate, authorize('readOwn', 'penilaian'), getPersonalNilai);

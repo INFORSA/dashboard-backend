@@ -291,3 +291,165 @@ exports.importPenilaian = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.importPenilaianDept = async (req, res) => {
+  try {
+    const buffer = req.file.buffer;
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+
+    const results = [];
+
+    for (const sheetName of workbook.SheetNames) {
+      const lowerSheetName = sheetName.toLowerCase();
+      if (!MONTHS_MAP[lowerSheetName]) {
+        results.push({ sheet: sheetName, status: "skipped", message: "Nama sheet tidak sesuai bulan" });
+        continue;
+      }
+
+      const month = MONTHS_MAP[lowerSheetName];
+      const waktu = new Date(2025, month - 1, 1);
+
+      const sheet = workbook.Sheets[sheetName];
+
+      for (let blockStart = 4; blockStart <= 47; blockStart += 8) {
+        const departemenCell = sheet[`C${blockStart}`];
+
+        if (!departemenCell?.v) {
+          results.push({
+            sheet: sheetName,
+            nama: "-",
+            status: "skipped",
+            message: `Departemen tidak ditemukan di baris ${blockStart}`
+          });
+          continue;
+        }
+
+        const departemen = departemenCell?.v?.toString().trim();
+
+        const [dept] = await new Promise((resolve, reject) => {
+          db.query(
+            "SELECT id_depart FROM departemen WHERE nama = ?",
+            [departemen],
+            (err, result) => {
+              if (err) return reject(err);
+              resolve(result);
+            }
+          );
+        });
+
+        if (!dept) {
+          results.push({
+            sheet: sheetName,
+            nama: departemen,
+            status: "failed",
+            message: "Departemen tidak ditemukan di database"
+          });
+          continue;
+        }
+
+        // ✅ Loop setiap baris penilai dalam blok (4 baris per blok)
+        for (let row = blockStart; row < blockStart + 4; row++) {
+          const penilaiCell = sheet[`B${row}`];
+
+          if (!penilaiCell?.v) {
+            results.push({
+              sheet: sheetName,
+              nama: departemen,
+              status: "warning",
+              message: `Penilai kosong di baris ${row}, baris dilewati`
+            });
+            continue;
+          }
+
+          const penilai = penilaiCell?.v?.toString().trim();
+
+          const [BPI] = await new Promise((resolve, reject) => {
+            db.query(
+              "SELECT id_user FROM user WHERE keterangan = ?",
+              [penilai],
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+              }
+            );
+          });
+
+          if (!BPI) {
+            results.push({
+              sheet: sheetName,
+              nama: departemen,
+              status: "failed",
+              message: `Penilai '${penilai}' tidak ditemukan di baris ${row}`
+            });
+            continue;
+          }
+
+          // ✅ Insert satu penilaian_departemen per penilai
+          const penilaianResult = await new Promise((resolve, reject) => {
+            db.query(
+              "INSERT INTO penilaian_departemen (departemen_id, waktu, user_id) VALUES (?, ?, ?)",
+              [dept.id_depart, waktu, BPI.id_user],
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+              }
+            );
+          });
+
+          const penilaian_id = penilaianResult.insertId;
+
+          const nilaiMatriks = [];
+          for (let i = 0; i < 6; i++) {
+            const col = String.fromCharCode("D".charCodeAt(0) + i); // D to I
+            const cell = sheet[`${col}${row}`];
+            nilaiMatriks.push(parseFloat(cell?.v || 0));
+          }
+
+          if (nilaiMatriks.some(isNaN)) {
+            results.push({
+              sheet: sheetName,
+              nama: departemen,
+              status: "failed",
+              message: `Nilai matriks tidak lengkap di baris ${row}`
+            });
+            continue;
+          }
+
+          // ✅ Insert detail_penilaian_departemen (tanpa user_id, sudah ada di tabel penilaian_departemen)
+          for (let i = 0; i < 6; i++) {
+            const matriks_id = 8 + i; // Matriks ID mulai dari 8
+            const nilai = nilaiMatriks[i];
+
+            await new Promise((resolve, reject) => {
+              db.query(
+                "INSERT INTO detail_penilaian_departemen (penilaian_id, matriks_id, nilai) VALUES (?, ?, ?)",
+                [penilaian_id, matriks_id, nilai],
+                (err) => {
+                  if (err) return reject(err);
+                  resolve();
+                }
+              );
+            });
+          }
+        }
+
+        results.push({
+          sheet: sheetName,
+          nama: departemen,
+          status: "success",
+          message: "Penilaian berhasil disimpan"
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Import penilaian dari semua sheet selesai",
+      summary: results,
+    });
+
+  } catch (err) {
+    console.error("Fatal error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
