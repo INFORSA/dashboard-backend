@@ -2,14 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { getNilai, getStaff, getLineChart, getBarChart, getRadarChart, getLineChart2, getAllNilai, getNilaiByPenilai, getMaxNilai, 
         getPersonalNilai, getPersonalLineChart, updateNilai, getMatriks, storeMatriks, addMatriks, updateMatriks, deleteMatriks, 
-        getPersonalRadarChart, getLineChartDept, getNilaiDept } = require('../controllers/performanceController');
+        getPersonalRadarChart, getLineChartDept, getNilaiDept, 
+        getNilaiDeptByPenilai,
+        updateNilaiDept} = require('../controllers/performanceController');
 const authenticate = require('../middleware/authMiddleware');
 const authorize = require('../middleware/authorize');
 const upload = require('../middleware/upload');
 
 // Route yang dilindungi
 //GET
-router.get('/get', authenticate, authorize('readAny', 'penilaian'), getStaff);
+// router.get('/get', authenticate, authorize('readAny', 'penilaian'), getStaff);
 
 router.get('/get/all/matriks', authenticate, authorize('readAny', 'penilaian'), getMatriks);
 router.get('/get/matriks/:id', authenticate, authorize('readAny', 'penilaian'), storeMatriks);
@@ -22,6 +24,7 @@ router.get('/get/nilai/:depart/:month', authenticate, authorize('readAny', 'peni
 router.get('/get/nilai-dept/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiDept);
 router.get('/get/max-nilai/:month', authenticate, authorize('readAny', 'penilaian'), getMaxNilai);
 router.get('/get/nilai/:depart/:penilai/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiByPenilai);
+router.get('/get/nilai-dept/:penilai/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiDeptByPenilai);
 router.get('/get/nilai/personal', authenticate, authorize('readOwn', 'penilaian'), getPersonalNilai);
 
 router.get('/get/linechart', authenticate, authorize('readAny', 'penilaian'), getLineChart);
@@ -36,5 +39,6 @@ router.get('/get/personal/radarchart', authenticate, authorize('readOwn', 'penil
 
 //UPDATE
 router.put("/update-nilai", authenticate, authorize('updateAny', 'penilaian'), updateNilai);
+router.put("/update-nilai-dept", authenticate, authorize('updateAny', 'penilaian'), updateNilaiDept);
 
 module.exports = router;

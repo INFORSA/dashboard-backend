@@ -46,7 +46,7 @@ function hitungTotalNilaiDept(penilaianList) {
   return {
     rataRataMatrix,
     totalNilai: parseFloat(totalNilai.toFixed(2)),
-    totalAkhir: parseFloat((totalNilai / 5 * 100).toFixed(2)) // Asumsi total maksimum adalah 4
+    totalAkhir: parseFloat((totalNilai / 5 * 100).toFixed(2))
   };
 }
 
@@ -227,6 +227,26 @@ exports.getNilaiByPenilai = (req, res) => {
               FROM view_penilaian_anggota WHERE nama_departemen = ?
               AND MONTHNAME(waktu) = ? AND penilai = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())`;
   db.query(sql, [depart, month, penilai], (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send(result);
+  });
+};
+
+exports.getNilaiDeptByPenilai = (req, res) => {
+  const { month, penilai } = req.params;
+  const sql = `SELECT nama_departemen, MONTHNAME(waktu) AS bulan,
+              nilai_matriks_1, 
+              nilai_matriks_2, 
+              nilai_matriks_3,
+              nilai_matriks_4, 
+              nilai_matriks_5, 
+              nilai_matriks_6, 
+              id_detail_matriks_1, id_detail_matriks_2, id_detail_matriks_3,
+              id_detail_matriks_4, id_detail_matriks_5,
+              id_detail_matriks_6, total_nilai 
+              FROM view_penilaian_departemen WHERE MONTHNAME(waktu) = ? 
+              AND penilai = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())`;
+  db.query(sql, [month, penilai], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send(result);
   });
@@ -701,6 +721,30 @@ exports.updateNilai = (req, res) => {
   }
 
   const sql = "UPDATE detail_penilaian SET nilai = ? WHERE id_detail_penilaian = ?";
+
+  db.query(sql, [nilai, id], (err, result) => {
+    if (err) {
+      console.error("❌ Gagal update nilai:", err);
+      return res.status(500).json({ error: "Gagal update nilai" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "ID tidak ditemukan" });
+    }
+
+    res.status(200).json({ message: "✅ Nilai berhasil diperbarui" });
+  });
+};
+
+exports.updateNilaiDept = (req, res) => {
+  const { id, nilai } = req.body;
+
+  // Validasi input
+  if (!id || typeof nilai === 'undefined') {
+    return res.status(400).json({ error: "ID dan nilai diperlukan" });
+  }
+
+  const sql = "UPDATE detail_penilaian_departemen SET nilai = ? WHERE id_detail_penilaian = ?";
 
   db.query(sql, [nilai, id], (err, result) => {
     if (err) {

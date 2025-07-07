@@ -99,6 +99,14 @@ const db = require('../config/db');
     });
   };
 
+  exports.getInti = (req, res) => {
+    const sql = 'SELECT DISTINCT penilai FROM view_penilaian_departemen';
+    db.query(sql, (err, result) => {
+      if (err) return res.status(500).send(err);
+      res.send(result);
+    });
+  };
+
   exports.getRole = (req, res) => {
     const sql = 'SELECT * FROM role ORDER BY id_role';
     db.query(sql, (err, result) => {
