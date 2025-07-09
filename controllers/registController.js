@@ -4,6 +4,7 @@ const db = require('../config/db');
 exports.registerStaff = async (req, res) => {
   const { username, password, nim, gender, depart_id } = req.body;
   const gambar = req.file?.filename; // File yang di-upload
+  const year = new Date().getFullYear();
 
   try {
     // Cek apakah username sudah ada
@@ -27,8 +28,8 @@ exports.registerStaff = async (req, res) => {
         const userId = resultUser.insertId;
 
         // Simpan ke tabel anggota
-        const sqlInsertAnggota = "INSERT INTO anggota (user_id, nama_staff, nim, gender, depart_id, gambar) VALUES (?, ?, ?, ?, ?, ?)";
-        db.query(sqlInsertAnggota, [userId, username, nim, gender, depart_id, gambar], async (err) => {
+        const sqlInsertAnggota = "INSERT INTO anggota (user_id, nama_staff, nim, gender, depart_id, gambar, periode) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        db.query(sqlInsertAnggota, [userId, username, nim, gender, depart_id, gambar, year], async (err) => {
           if (err) {
             console.error("DB Error (user):", err);
             return res.status(500).json({ message: "Gagal menyimpan anggota" });

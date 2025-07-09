@@ -867,3 +867,117 @@ exports.addMatriks = async (req, res) => {
       res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
   };
+
+  exports.generatePenilaian = async (req, res) => {
+    try {
+      const { startMonth, endMonth } = req.body; // Angka 1-12
+      const year = new Date().getFullYear();
+
+      if (!startMonth || !endMonth || startMonth < 1 || endMonth > 12 || startMonth > endMonth) {
+        return res.status(400).json({ success: false, message: "Periode bulan tidak valid." });
+      }
+
+      // Ambil semua anggota untuk periode tahun sekarang
+      const anggotaList = await new Promise((resolve, reject) => {
+        db.query("SELECT id_anggota FROM anggota WHERE periode = ?", [year], (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+      });
+
+      if (anggotaList.length === 0) {
+        return res.status(404).json({ success: false, message: "Tidak ada anggota untuk periode tahun ini." });
+      }
+
+      const pengurusList = await new Promise((resolve, reject) => {
+        db.query("SELECT id_pengurus FROM pengurus", (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+      });
+
+      if (pengurusList.length === 0) {
+        return res.status(404).json({ success: false, message: "Tidak ada pengurus terdaftar." });
+      }
+
+      const logs = [];
+
+      for (let month = startMonth; month <= endMonth; month++) {
+        const waktu = new Date(year, month - 1, 1);
+        let duplikatDitemukan = false;
+
+        for (const anggota of anggotaList) {
+          for (const pengurus of pengurusList) {
+            // 👉 Cek apakah sudah ada penilaian untuk kombinasi ini
+            const [existing] = await new Promise((resolve, reject) => {
+              db.query(
+                `SELECT id_penilaian FROM penilaian 
+                WHERE anggota_id = ? AND pengurus_id = ? AND MONTH(waktu) = ? AND YEAR(waktu) = ?`,
+                [anggota.id_anggota, pengurus.id_pengurus, month, year],
+                (err, result) => {
+                  if (err) return reject(err);
+                  resolve(result);
+                }
+              );
+            });
+
+            if (existing) {
+              duplikatDitemukan = true;
+              break;
+            }
+          }
+          if (duplikatDitemukan) break;
+        }
+
+        if (duplikatDitemukan) {
+          return res.status(409).json({
+            success: false,
+            message: `Template penilaian untuk bulan ${month} tahun ${year} sudah tersedia. Tidak dapat digandakan.`,
+          });
+        }
+
+        // ✅ Jika tidak ada duplikat, lanjut buat template
+        for (const anggota of anggotaList) {
+          for (const pengurus of pengurusList) {
+            const penilaianResult = await new Promise((resolve, reject) => {
+              db.query(
+                "INSERT INTO penilaian (anggota_id, waktu, pengurus_id) VALUES (?, ?, ?)",
+                [anggota.id_anggota, waktu, pengurus.id_pengurus],
+                (err, result) => {
+                  if (err) return reject(err);
+                  resolve(result);
+                }
+              );
+            });
+
+            const penilaian_id = penilaianResult.insertId;
+
+            for (let matriks_id = 1; matriks_id <= 7; matriks_id++) {
+              await new Promise((resolve, reject) => {
+                db.query(
+                  "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
+                  [penilaian_id, matriks_id],
+                  (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                  }
+                );
+              });
+            }
+
+            logs.push({ anggota_id: anggota.id_anggota, pengurus_id: pengurus.id_pengurus, bulan: month });
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Template penilaian berhasil dibuat untuk bulan ${startMonth} hingga ${endMonth}`,
+        created: logs.length,
+        detail: logs
+      });
+    } catch (err) {
+      console.error("Error generate template penilaian:", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };

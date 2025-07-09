@@ -4,7 +4,8 @@ const { getNilai, getStaff, getLineChart, getBarChart, getRadarChart, getLineCha
         getPersonalNilai, getPersonalLineChart, updateNilai, getMatriks, storeMatriks, addMatriks, updateMatriks, deleteMatriks, 
         getPersonalRadarChart, getLineChartDept, getNilaiDept, 
         getNilaiDeptByPenilai,
-        updateNilaiDept} = require('../controllers/performanceController');
+        updateNilaiDept,
+        generatePenilaian} = require('../controllers/performanceController');
 const authenticate = require('../middleware/authMiddleware');
 const authorize = require('../middleware/authorize');
 const upload = require('../middleware/upload');
@@ -40,5 +41,8 @@ router.get('/get/personal/radarchart', authenticate, authorize('readOwn', 'penil
 //UPDATE
 router.put("/update-nilai", authenticate, authorize('updateAny', 'penilaian'), updateNilai);
 router.put("/update-nilai-dept", authenticate, authorize('updateAny', 'penilaian'), updateNilaiDept);
+//Generate Penilaian
+router.post('/add/template-staff', authenticate, authorize('createAny', 'penilaian'), upload.none(), generatePenilaian);
+
 
 module.exports = router;
