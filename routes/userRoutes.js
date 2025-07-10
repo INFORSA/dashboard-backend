@@ -1,9 +1,10 @@
 const express = require('express');
-const { getUser, getAnggota, getRole, addRole, updateRole, deleteRole, storeRole, getAnggotaByDepart, getAnggotaByNama, deleteUser, storeUser, storeAnggota, getInti } = require('../controllers/userController');
+const { getUser, getAnggota, getRole, addRole, updateRole, deleteRole, storeRole, getAnggotaByDepart, getAnggotaByNama, deleteUser, storeUser, storeAnggota, getInti, getUserByNama } = require('../controllers/userController');
 const router = express.Router();
 const upload = require('../middleware/upload');
 
 router.get('/get', getUser);
+router.get('/get/user/:nama', getUserByNama);
 router.get('/store/:id', storeUser);
 router.delete("/remove/:id", deleteUser);
 

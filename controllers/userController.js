@@ -87,6 +87,15 @@ const db = require('../config/db');
       });
     };
 
+  exports.getUserByNama = (req, res) => {
+      const { nama } = req.params;
+      const sql = `SELECT * FROM user WHERE username = ?`;
+      db.query(sql, [nama], (err, result) => {
+        if (err) return res.status(500).send(err);
+        res.send(result);
+      });
+    };
+
   exports.getAnggotaByDepart = (req, res) => {
     const { depart } = req.params;
     const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen, departemen.nama as depart FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart WHERE departemen.nama = ? ORDER BY anggota.depart_id, anggota.nim ASC';
