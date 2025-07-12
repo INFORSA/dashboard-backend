@@ -170,7 +170,7 @@ exports.getNilaiDept = (req, res) => {
   const { month } = req.params;
 
   const sql = `
-    SELECT penilai, jabatan, nama_departemen, MONTHNAME(waktu) AS bulan,
+    SELECT jabatan, nama_departemen, MONTHNAME(waktu) AS bulan,
            nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
            nilai_matriks_4, nilai_matriks_5, nilai_matriks_6
     FROM view_penilaian_departemen

@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocs = require('./swagger/apidocs.json');
 const cookieParser = require("cookie-parser");
+const path = require('path');
 
 const authRoutes = require('./routes/authRoutes');
 const inseventRoutes = require('./routes/inseventRoutes');
@@ -47,6 +48,7 @@ server.use(cookieParser());
 
 // Route utama
 server.get('/', (req, res) => res.send('Welcome to INFORSA API'));
+server.use('/public/sertif', express.static(path.join(__dirname, 'public/sertif')));
 
 // Routing modular
 server.use('/api', authRoutes);
