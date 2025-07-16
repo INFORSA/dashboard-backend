@@ -27,17 +27,29 @@ exports.getReview = (req, res) => {
 exports.checkSertif = (req, res) => {
   const { nim } = req.params;
 
-  if (!nim) return res.status(400).json({ message: "NIM tidak ditemukan" });
+  if (!nim) {
+    return res.status(400).json({ message: "NIM tidak ditemukan" });
+  }
 
-  const filePath = path.join(__dirname, "../public/sertif", `${nim}.pdf`);
-  fs.access(filePath, fs.constants.F_OK, (err) => {
+  const filename = `${nim}.pdf`;
+
+  const sql = "SELECT * FROM sertif WHERE path = ?";
+  db.query(sql, [filename], (err, result) => {
     if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    }
+
+    if (result.length === 0) {
       return res.status(200).json({
-        avaible: false,
+        available: false,
         message: "Sertifikat belum diupload",
       });
     } else {
-      return res.status(200).json({ available: true, path: `/sertif/${nim}.pdf` });
+      return res.status(200).json({
+        available: true,
+        path: `/sertif/${filename}`,
+      });
     }
   });
 };
