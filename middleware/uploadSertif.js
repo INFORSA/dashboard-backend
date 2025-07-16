@@ -4,7 +4,7 @@ const path = require("path");
 // Konfigurasi penyimpanan sertifikat
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "public/sertif/"); // folder simpan sertif, pastikan folder ini ada
+    cb(null, path.join(__dirname, "../uploads/sertif")); // folder simpan sertif, pastikan folder ini ada
   },
   filename: function (req, file, cb) {
     // Simpan dengan nama asli, contoh: 2409116048.pdf

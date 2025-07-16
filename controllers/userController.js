@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const jwt = require('jsonwebtoken');
 
   exports.getUser = (req, res) => {
       const sql = 'SELECT user.*, role.nama_role FROM user JOIN role ON user.role = role.id_role ORDER BY user.role';
@@ -69,6 +70,60 @@ const db = require('../config/db');
               console.error("DB Error:", err);
               return res.status(500).json({ message: "Gagal mengubah User" });
             }
+            res.json({ message: "Update User berhasil!" });
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    }
+  };
+
+  exports.updateUsername = async (req, res) => {
+    const { usernameLama, usernameBaru, role } = req.body;
+    console.log(usernameLama, usernameBaru, role);
+
+    try {
+      // Cek apakah role dengan id itu ada
+      const sqlFind = "SELECT * FROM user WHERE username = ?";
+      db.query(sqlFind, [usernameLama], (err, rows) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal memeriksa User" });
+        }
+        if (rows.length === 0) {
+          return res.status(404).json({ message: "User tidak ditemukan" });
+        }
+
+        // Cek duplikasi nama_role lain (optional)
+        const sqlDup = "SELECT * FROM user WHERE username = ?";
+        db.query(sqlDup, [usernameBaru], (err, dup) => {
+          if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ message: "Gagal memeriksa duplikasi" });
+          }
+          if (dup.length > 0) {
+            return res.status(400).json({ message: "Nama sudah digunakan" });
+          }
+
+          // Update
+          const sqlUpdate = "UPDATE user SET username = ? WHERE username = ?";
+          db.query(sqlUpdate, [usernameBaru, usernameLama], (err) => {
+            if (err) {
+              console.error("DB Error:", err);
+              return res.status(500).json({ message: "Gagal mengubah Username" });
+            }
+             const newToken = jwt.sign({ username: usernameBaru, role: role }, "INFORSA", {
+              expiresIn: "1h",
+            });
+
+            res.cookie("token", newToken, {
+              httpOnly: true,
+              secure: true,
+              sameSite: "None",
+              maxAge: 60 * 60 * 1000,
+            });
             res.json({ message: "Update User berhasil!" });
           });
         });
@@ -330,4 +385,49 @@ const db = require('../config/db');
       console.error("Error:", error);
       res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
+  };
+
+  //PASWORD
+  exports.changePassword = async (req, res) => {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ message: "Tidak ada token" });
+
+    jwt.verify(token, "INFORSA", async (err, decoded) => {
+      if (err) return res.status(403).json({ message: "Token tidak valid" });
+
+      const { username } = decoded;
+      const { passwordLama, passwordBaru, konfirmasiPassword } = req.body;
+
+      if (!passwordLama || !passwordBaru || !konfirmasiPassword) {
+        return res.status(400).json({ message: "Lengkapi semua field" });
+      }
+
+      if (passwordBaru !== konfirmasiPassword) {
+        return res.status(400).json({ message: "Konfirmasi password tidak cocok" });
+      }
+
+      db.query("SELECT * FROM user WHERE username = ?", [username], async (err, result) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal mengambil data user" });
+        }
+
+        const user = result[0];
+        const match = await bcrypt.compare(passwordLama, user.password);
+
+        if (!match) {
+          return res.status(400).json({ message: "Password lama salah" });
+        }
+
+        const hashedPassword = await bcrypt.hash(passwordBaru, 10);
+        db.query("UPDATE user SET password = ? WHERE username = ?", [hashedPassword, username], (err) => {
+          if (err) {
+            console.error("Update Error:", err);
+            return res.status(500).json({ message: "Gagal memperbarui password" });
+          }
+
+          res.json({ message: "Password berhasil diperbarui" });
+        });
+      });
+    });
   };
