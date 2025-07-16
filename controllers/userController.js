@@ -35,7 +35,94 @@ const db = require('../config/db');
     });
   };
 
-  // STORE ROLE 
+  exports.updateUser = async (req, res) => {
+    const { id } = req.params;
+    const { username, role } = req.body;
+
+    try {
+      // Cek apakah role dengan id itu ada
+      const sqlFind = "SELECT * FROM user WHERE id_user = ?";
+      db.query(sqlFind, [id], (err, rows) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal memeriksa User" });
+        }
+        if (rows.length === 0) {
+          return res.status(404).json({ message: "User tidak ditemukan" });
+        }
+
+        // Cek duplikasi nama_role lain (optional)
+        const sqlDup = "SELECT * FROM user WHERE username = ? AND id_user = ?";
+        db.query(sqlDup, [username, id], (err, dup) => {
+          if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ message: "Gagal memeriksa duplikasi" });
+          }
+          if (dup.length > 0) {
+            return res.status(400).json({ message: "Nama sudah digunakan" });
+          }
+
+          // Update
+          const sqlUpdate = "UPDATE user SET username = ?, role = ?  WHERE id_user = ?";
+          db.query(sqlUpdate, [username, role, id], (err) => {
+            if (err) {
+              console.error("DB Error:", err);
+              return res.status(500).json({ message: "Gagal mengubah User" });
+            }
+            res.json({ message: "Update User berhasil!" });
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    }
+  };
+
+  exports.updateAnggota = (req, res) => {
+    const { id } = req.params;
+    const { username, nim, gender, departemen } = req.body;
+
+    // Cek apakah anggota dengan ID tersebut ada
+    const sqlFind = "SELECT * FROM anggota WHERE user_id = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal memeriksa data anggota" });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Anggota tidak ditemukan" });
+      }
+
+      // Cek duplikasi NIM untuk anggota lain (jika perlu)
+      const sqlDup = "SELECT * FROM anggota WHERE nim = ? AND user_id != ?";
+      db.query(sqlDup, [nim, id], (err, dup) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal memeriksa duplikasi NIM" });
+        }
+        if (dup.length > 0) {
+          return res.status(400).json({ message: "NIM sudah digunakan oleh anggota lain" });
+        }
+
+        // Lanjut update
+        const sqlUpdate = `
+          UPDATE anggota 
+          SET nama_staff = ?, nim = ?, gender = ?, depart_id = ? 
+          WHERE user_id = ?
+        `;
+        db.query(sqlUpdate, [username, nim, gender, departemen, id], (err) => {
+          if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ message: "Gagal mengubah data anggota" });
+          }
+          res.json({ message: "Update data anggota berhasil!" });
+        });
+      });
+    });
+  };
+
+  // STORE ANGGOTA 
   exports.storeAnggota = async (req, res) => {
     const { id } = req.params;
     const sqlFind = "SELECT * FROM anggota WHERE user_id = ?";

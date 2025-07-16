@@ -1,17 +1,19 @@
 const express = require('express');
-const { getUser, getAnggota, getRole, addRole, updateRole, deleteRole, storeRole, getAnggotaByDepart, getAnggotaByNama, deleteUser, storeUser, storeAnggota, getInti, getUserByNama } = require('../controllers/userController');
+const { getUser, getAnggota, getRole, addRole, updateRole, deleteRole, storeRole, getAnggotaByDepart, getAnggotaByNama, deleteUser, storeUser, storeAnggota, getInti, getUserByNama, updateUser, updateAnggota } = require('../controllers/userController');
 const router = express.Router();
 const upload = require('../middleware/upload');
 
 router.get('/get', getUser);
 router.get('/get/user/:nama', getUserByNama);
 router.get('/store/:id', storeUser);
+router.put("/update/:id", upload.none(), updateUser);
 router.delete("/remove/:id", deleteUser);
 
 router.get('/get/anggota', getAnggota);
 router.get('/get/anggota/:nama', getAnggotaByNama);
 router.get('/get/anggota/dept/:depart', getAnggotaByDepart);
 router.get('/store/anggota/:id', storeAnggota);
+router.put("/update/anggota/:id", upload.none(), updateAnggota);
 
 router.get('/get/bpi', getInti);
 

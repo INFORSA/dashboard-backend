@@ -3,51 +3,84 @@ const bcrypt = require('bcrypt');
 const db = require('../config/db');
 
 exports.login = (req, res) => {
-    const { username, password } = req.body;
-      const sqlSelect = "SELECT user.*, role.nama_role FROM user JOIN role ON user.role = role.id_role WHERE user.username = ?";
-      db.query(sqlSelect, [username], async (err, result) => {
+  const { username, password } = req.body;
+
+  const sqlSelect = `
+    SELECT user.*, role.nama_role 
+    FROM user 
+    JOIN role ON user.role = role.id_role 
+    WHERE user.username = ?
+  `;
+
+  db.query(sqlSelect, [username], async (err, result) => {
+    if (err) {
+      console.error('Server error:', err);
+      return res.status(500).send('Server error');
+    }
+
+    if (result.length === 0) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    const user = result[0];
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    const role = user.nama_role;
+
+    // Default token payload
+    let tokenPayload = {
+      username: user.username,
+      role,
+    };
+
+    // Jika role-nya "user", tambahkan nim dari tabel anggota
+    if (role === 'staff') {
+      const sqlNim = `
+        SELECT nim 
+        FROM anggota 
+        WHERE nama_staff = ?
+        LIMIT 1
+      `;
+
+      db.query(sqlNim, [username], (err, resultNim) => {
         if (err) {
-          console.error('Server error:', err);
-          res.status(500).send('Server error');
-          return;
+          console.error('Error getting NIM:', err);
+          return res.status(500).send('Server error');
         }
-    
-        if (result.length > 0) {
-          const user = result[0];
-          // Memeriksa kecocokan password
-          try {
-            const match = await bcrypt.compare(password, user.password);
-    
-            if (match) {
-              // Password cocok, buat token JWT
-              const token = jwt.sign({ username: user.username, role: user.nama_role }, 'INFORSA', { expiresIn: '1h' });
-              res.cookie('token', token, {
-                httpOnly: true,
 
-                //Local
-                // secure: process.env.NODE_ENV === 'production',
-                // sameSite: 'strict',
+        const nim = resultNim[0]?.nim;
+        if (nim) tokenPayload.nim = nim;
 
-                //Tes Production
-                secure: true,
-                sameSite: 'None',
-                
-                maxAge: 60 * 60 * 1000,
-              });
-              res.json({ message: 'Login sukses'});
-            } else {
-              // Password tidak cocok
-              res.status(401).json({ message: 'Invalid username or password' });
-            }
-          } catch (error) {
-            console.error('Error comparing passwords:', error);
-            res.status(500).send('Server error');
-          }
-        } else {
-          // User tidak ditemukan
-          res.status(401).json({ message: 'Invalid username or password' });
-        }
-    });
+        // Buat dan kirim token
+        const token = jwt.sign(tokenPayload, 'INFORSA', { expiresIn: '1h' });
+
+        res.cookie('token', token, {
+          httpOnly: true,
+          secure: true, // sesuaikan dengan env
+          sameSite: 'None',
+          maxAge: 60 * 60 * 1000,
+        });
+
+        return res.json({ message: 'Login sukses' });
+      });
+    } else {
+      // Untuk role superadmin atau admin
+      const token = jwt.sign(tokenPayload, 'INFORSA', { expiresIn: '1h' });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'None',
+        maxAge: 60 * 60 * 1000,
+      });
+
+      return res.json({ message: 'Login sukses' });
+    }
+  });
 };
 
 exports.logout = (req, res) => {

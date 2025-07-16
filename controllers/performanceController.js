@@ -968,7 +968,65 @@ exports.addMatriks = async (req, res) => {
             logs.push({ anggota_id: anggota.id_anggota, pengurus_id: pengurus.id_pengurus, bulan: month });
           }
         }
+
+        // === Tambahan: Penilaian untuk Departemen ===
+        const departemenList = await new Promise((resolve, reject) => {
+          db.query("SELECT id_depart FROM departemen", (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+          });
+        });
+        
+        const penilaiUtama = await new Promise((resolve, reject) => {
+          db.query(
+            `SELECT id_user FROM user WHERE keterangan IN (?, ?, ?, ?)`,
+            ["Ketua Umum", "Wakil Ketua Umum", "Sekretaris Umum", "Bendahara Umum"],
+            (err, result) => {
+              if (err) return reject(err);
+              resolve(result);
+            }
+          );
+        });
+
+        for (const departemen of departemenList) {
+          const waktu = new Date(year, month - 1, 1);
+
+          for (const penilai of penilaiUtama) {
+            const insertPenilaianDepart = await new Promise((resolve, reject) => {
+              db.query(
+                "INSERT INTO penilaian_departemen (departemen_id, waktu, user_id) VALUES (?, ?, ?)",
+                [departemen.id_depart, waktu, penilai.id_user],
+                (err, result) => {
+                  if (err) return reject(err);
+                  resolve(result);
+                }
+              );
+            });
+            const penilaianDepartemenId = insertPenilaianDepart.insertId;
+    
+            // Asumsikan matriks id 1-7
+            for (let matriks_id = 8; matriks_id <= 13; matriks_id++) {
+              await new Promise((resolve, reject) => {
+                db.query(
+                  "INSERT INTO detail_penilaian_departemen (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
+                  [penilaianDepartemenId, matriks_id],
+                  (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                  }
+                );
+              });
+            }
+    
+            logs.push({
+              departemen_id: departemen.id_depart,
+              bulan: month,
+              tipe: 'departemen'
+            });
+          }
+        }
       }
+
 
       res.json({
         success: true,

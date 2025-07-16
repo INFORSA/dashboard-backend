@@ -111,3 +111,24 @@ exports.deleteSertif = async (req, res) => {
       res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
   };
+
+exports.downloadSertif = (req, res) => {
+  const filename = req.params.filename;
+  const userNIM = req.user?.nim;
+  const userRole = req.user?.role;
+
+  const filePath = path.join(__dirname, '../uploads/sertif', filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: "File tidak ditemukan." });
+  }
+
+  // Validasi: hanya izinkan jika filename sesuai dengan NIM user
+  if (userRole !== "superadmin" && !filename.startsWith(userNIM)) {
+    return res.status(403).json({ message: "Tidak diizinkan mengakses file ini." });
+  }
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "inline; filename=" + filename);
+  return res.sendFile(filePath);
+};
