@@ -27,16 +27,19 @@ router.get('/get/max-nilai/:month', authenticate, authorize('readAny', 'penilaia
 router.get('/get/nilai/:depart/:penilai/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiByPenilai);
 router.get('/get/nilai-dept/:penilai/:month', authenticate, authorize('readAny', 'penilaian'), getNilaiDeptByPenilai);
 router.get('/get/nilai/personal', authenticate, authorize('readOwn', 'penilaian'), getPersonalNilai);
+router.get('/get/nilai/:staffUsername', authenticate, authorize('readAny', 'penilaian'), getPersonalNilai);
 
 router.get('/get/linechart', authenticate, authorize('readAny', 'penilaian'), getLineChart);
 router.get('/get/linechart/:depart', authenticate, authorize('readAny', 'penilaian'), getLineChart2);
 router.get('/get/departemen/linechart/:waktu', authenticate, authorize('readAny', 'penilaian'), getLineChartDept);
 router.get('/get/personal/linechart', authenticate, authorize('readOwn', 'penilaian'), getPersonalLineChart);
+router.get('/get/staff/linechart/:staffUsername', authenticate, authorize('readOwn', 'penilaian'), getPersonalLineChart);
 
 router.get('/get/barchart/:depart', authenticate, authorize('readAny', 'penilaian'), getBarChart);
 
 router.get('/get/radarchart/:depart', authenticate, authorize('readAny', 'penilaian'), getRadarChart);
 router.get('/get/personal/radarchart', authenticate, authorize('readOwn', 'penilaian'), getPersonalRadarChart);
+router.get('/get/staff/radarchart/:staffUsername', authenticate, authorize('readAny', 'penilaian'), getPersonalRadarChart);
 
 //UPDATE
 router.put("/update-nilai", authenticate, authorize('updateAny', 'penilaian'), updateNilai);

@@ -501,7 +501,9 @@ exports.getLineChart2 = (req, res) => {
 };
 
 exports.getPersonalLineChart = (req, res) => {
-  const nama = req.user.username;
+  const { staffUsername } = req.params;
+  const staff = req.user.username;
+  const nama = staffUsername || staff;
   const sql = `SELECT keterangan_penilai, nama_anggota, nama_departemen, MONTHNAME(waktu) AS bulan, 
               waktu, anggota_id, penilai, 
               nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
@@ -615,7 +617,9 @@ exports.getLineChartDept = (req, res) => {
 };
 
 exports.getPersonalNilai = (req, res) => {
-  const nama = req.user.username;
+  const { staffUsername } = req.params;
+  const staff = req.user.username;
+  const nama = staffUsername || staff;
   const sql = `SELECT keterangan_penilai, nama_anggota, nama_departemen, MONTHNAME(waktu) AS bulan, 
               waktu, anggota_id, penilai, 
               nilai_matriks_1, nilai_matriks_2, nilai_matriks_3,
@@ -695,7 +699,9 @@ exports.getRadarChart = (req, res) => {
 };
 
 exports.getPersonalRadarChart = (req, res) => {
-  const nama = req.user.username;
+  const { staffUsername } = req.params;
+  const staff = req.user.username;
+  const nama = staffUsername || staff;
   const sql = `SELECT * FROM vw_penilaian_anggota_per_departemen WHERE nama_anggota = ?`;
   db.query(sql, [nama], (err, result) => {
     if (err) return res.status(500).send(err);
