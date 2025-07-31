@@ -19,7 +19,8 @@ const server = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://zslnjmx0-5173.asse.devtunnels.ms",
-  "https://dashboard-inforsa.netlify.app"
+  "https://dashboard-inforsa.netlify.app",
+  "https://dashboard.inforsa-unmul.org"
 ];
 
 server.use(cors({
