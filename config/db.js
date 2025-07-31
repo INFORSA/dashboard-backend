@@ -1,11 +1,12 @@
 const mysql = require('mysql2');
+require('dotenv').config(); // load file .env
 
 // Buat koneksi ke database
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'inforsa',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 
 // Cek koneksi
