@@ -875,6 +875,7 @@ exports.addMatriks = async (req, res) => {
   };
 
   exports.generatePenilaian = async (req, res) => {
+    // console.log("MASUK TEMPLATE STAFF");
     try {
       const { startMonth, endMonth } = req.body; // Angka 1-12
       const year = new Date().getFullYear();
@@ -1041,7 +1042,7 @@ exports.addMatriks = async (req, res) => {
         detail: logs
       });
     } catch (err) {
-      console.error("Error generate template penilaian:", err);
+      console.log("Error generate template penilaian:", err);
       res.status(500).json({ success: false, message: err.message });
     }
   };

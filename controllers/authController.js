@@ -124,7 +124,7 @@ exports.me = (req, res) => {
 };
 
 exports.registerAdmin = async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, jabatan, dept_id, keterangan } = req.body;
   
     try {
       // Cek apakah user sudah ada
@@ -155,8 +155,28 @@ exports.registerAdmin = async (req, res) => {
             console.error("DB Error:", err); // Menampilkan error DB ke console
             return res.status(500).json({ message: "Gagal menyimpan user" });
           }
-  
-          res.status(201).json({ message: "Registrasi berhasil!" });
+          
+          // Ambil ID user yang baru dibuat
+          const userId = result.insertId;
+
+          // Jika role BPH, insert juga ke tabel pengurus
+          if (roleChoosen === 2) {
+            const sqlInsertPengurus = `
+              INSERT INTO pengurus (user_id, dept_id, jabatan, keterangan)
+              VALUES (?, ?, ?, ?)
+            `;
+            // Misal dept_id BPH = 1 (ubah sesuai kebutuhan)
+            db.query(sqlInsertPengurus, [userId, dept_id, jabatan, keterangan || ""], (err) => {
+              if (err) {
+                console.error("DB Error:", err);
+                return res.status(500).json({ message: "Gagal menyimpan data pengurus" });
+              }
+
+              return res.status(201).json({ message: "Registrasi berhasil & pengurus ditambahkan!" });
+            });
+          } else {
+            return res.status(201).json({ message: "Registrasi berhasil!" });
+          }
         });
       });
     } catch (error) {

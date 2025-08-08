@@ -24,8 +24,9 @@ exports.importAnggota = async (req, res) => {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
     const results = [];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-    for (let row = 2; row <= 139; row++) {
+    for (let row = 2; row <= rows.length; row++) {
       const nimCell = sheet[`C${row}`];
       const usernameCell = sheet[`B${row}`];
       const departCell = sheet[`D${row}`];
@@ -69,12 +70,12 @@ exports.importAnggota = async (req, res) => {
         });
 
         const userId = userInsertResult.insertId;
-
+        const periode = new Date().getFullYear();
         // Simpan ke anggota
         await new Promise((resolve, reject) => {
           db.query(
-            "INSERT INTO anggota (user_id, nama_staff, nim, gender, depart_id, gambar) VALUES (?, ?, ?, ?, ?, ?)",
-            [userId, username, nim, gender, depart_id, null],
+            "INSERT INTO anggota (user_id, nama_staff, nim, gender, depart_id, gambar, periode) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [userId, username, nim, gender, depart_id, null, periode],
             (err) => {
               if (err) return reject(err);
               resolve();

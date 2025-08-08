@@ -31,9 +31,10 @@ exports.getReview = (req, res) => {
         res.send(result);
     });
   };
+
 exports.addReview = async (req, res) => {
-  const { userLogin, deptTarget, month, isi } = req.body;
-//   console.log(userLogin, deptTarget, month, isi);
+  const { userLogin, target, month, isi } = req.body;
+//   console.log(userLogin, target, month, isi);
   try {
     
     // Cek apakah sudah ada review di bulan yang sama
@@ -42,7 +43,7 @@ exports.addReview = async (req, res) => {
       WHERE user_id = ? AND depart_id = ? AND MONTHNAME(waktu) = ? AND YEAR(waktu) = YEAR(CURRENT_DATE())
     `;
 
-    db.query(checkSql, [userLogin, deptTarget, month], (checkErr, checkResult) => {
+    db.query(checkSql, [userLogin, target, month], (checkErr, checkResult) => {
       if (checkErr) {
         console.error("Error saat cek review:", checkErr);
         return res.status(500).json({ message: "Gagal memeriksa review" });
@@ -55,7 +56,7 @@ exports.addReview = async (req, res) => {
           SET isi = ?, updated_at = NOW() 
           WHERE user_id = ? AND depart_id = ? AND MONTHNAME(waktu) = ?
         `;
-        db.query(updateSql, [isi, userLogin, deptTarget, month], (updateErr) => {
+        db.query(updateSql, [isi, userLogin, target, month], (updateErr) => {
           if (updateErr) {
             console.error("Error saat update review:", updateErr);
             return res.status(500).json({ message: "Gagal memperbarui review" });
@@ -92,7 +93,7 @@ exports.addReview = async (req, res) => {
           INSERT INTO review_depart (user_id, depart_id, waktu, isi) 
           VALUES (?, ?, ?, ?)
         `;
-        db.query(insertSql, [userLogin, deptTarget, waktu, isi], (insertErr) => {
+        db.query(insertSql, [userLogin, target, waktu, isi], (insertErr) => {
           if (insertErr) {
             console.error("Error saat insert review:", insertErr);
             return res.status(500).json({ message: "Gagal menambahkan review" });

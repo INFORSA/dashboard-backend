@@ -26,7 +26,11 @@ const jwt = require('jsonwebtoken');
   // STORE ROLE 
   exports.storeUser = async (req, res) => {
     const { id } = req.params;
-    const sqlFind = "SELECT * FROM user WHERE id_user = ?";
+    const sqlFind = `
+      SELECT u.id_user, u.username, u.role, p.dept_id, p.jabatan, p.keterangan
+      FROM user u
+      LEFT JOIN pengurus p ON u.id_user = p.user_id
+      WHERE u.id_user = ?`;
     db.query(sqlFind, [id], (err, rows) => {
       if (err) return res.status(500).json({ message: err.message });
       if (rows.length === 0)
@@ -38,12 +42,17 @@ const jwt = require('jsonwebtoken');
 
   exports.updateUser = async (req, res) => {
     const { id } = req.params;
-    const { username, role } = req.body;
+    const { username, role, dept_id, jabatan, keterangan } = req.body;
 
     try {
-      // Cek apakah role dengan id itu ada
-      const sqlFind = "SELECT * FROM user WHERE id_user = ?";
-      db.query(sqlFind, [id], (err, rows) => {
+      // Cek user sekali saja
+      const sqlFind = `
+        SELECT u.*, p.dept_id, p.jabatan, p.keterangan
+        FROM user u
+        LEFT JOIN pengurus p ON u.id_user = p.user_id
+        WHERE u.id_user = ?
+      `;
+      db.query(sqlFind, [id], async (err, rows) => {
         if (err) {
           console.error("DB Error:", err);
           return res.status(500).json({ message: "Gagal memeriksa User" });
@@ -52,33 +61,72 @@ const jwt = require('jsonwebtoken');
           return res.status(404).json({ message: "User tidak ditemukan" });
         }
 
-        // Cek duplikasi nama_role lain (optional)
-        const sqlDup = "SELECT * FROM user WHERE username = ? AND id_user = ?";
-        db.query(sqlDup, [username, id], (err, dup) => {
-          if (err) {
-            console.error("DB Error:", err);
-            return res.status(500).json({ message: "Gagal memeriksa duplikasi" });
-          }
-          if (dup.length > 0) {
-            return res.status(400).json({ message: "Nama sudah digunakan" });
-          }
+        const currentUser = rows[0];
 
-          // Update
-          const sqlUpdate = "UPDATE user SET username = ?, role = ?  WHERE id_user = ?";
-          db.query(sqlUpdate, [username, role, id], (err) => {
-            if (err) {
-              console.error("DB Error:", err);
-              return res.status(500).json({ message: "Gagal mengubah User" });
-            }
-            res.json({ message: "Update User berhasil!" });
+        // Cek apakah username berubah
+        if (username !== currentUser.username) {
+          // Cek duplikasi username
+          const sqlDup = "SELECT * FROM user WHERE username = ? AND id_user != ?";
+          const dupCheck = await new Promise((resolve, reject) => {
+            db.query(sqlDup, [username, id], (err, dup) => {
+              if (err) return reject(err);
+              resolve(dup);
+            });
           });
-        });
+          if (dupCheck.length > 0) {
+            return res.status(400).json({ message: "Username sudah digunakan" });
+          }
+        }
+
+        // Update user (jika username atau role berubah)
+        if (username !== currentUser.username || role !== currentUser.role) {
+          const sqlUpdateUser = "UPDATE user SET username = ?, role = ? WHERE id_user = ?";
+          await new Promise((resolve, reject) => {
+            db.query(sqlUpdateUser, [username, role, id], (err) => {
+              if (err) return reject(err);
+              resolve();
+            });
+          });
+        }
+
+        // Update / Insert pengurus hanya jika role BPH
+        if (role === 2 || role === "BPH") {
+          if (currentUser.dept_id) {
+            // Sudah ada pengurus → update
+            const sqlUpdatePengurus = `
+              UPDATE pengurus
+              SET dept_id = ?, jabatan = ?, keterangan = ?
+              WHERE user_id = ?
+            `;
+            await new Promise((resolve, reject) => {
+              db.query(sqlUpdatePengurus, [dept_id, jabatan, keterangan, id], (err) => {
+                if (err) return reject(err);
+                resolve();
+              });
+            });
+          } else {
+            // Belum ada → insert
+            const sqlInsertPengurus = `
+              INSERT INTO pengurus (user_id, dept_id, jabatan, keterangan)
+              VALUES (?, ?, ?, ?)
+            `;
+            await new Promise((resolve, reject) => {
+              db.query(sqlInsertPengurus, [id, dept_id, jabatan, keterangan], (err) => {
+                if (err) return reject(err);
+                resolve();
+              });
+            });
+          }
+        }
+
+        res.json({ message: "Update berhasil!" });
       });
     } catch (error) {
       console.error("Error:", error);
       res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
   };
+
 
   exports.updateUsername = async (req, res) => {
     const { usernameLama, usernameBaru, role } = req.body;
