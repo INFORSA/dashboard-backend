@@ -270,7 +270,7 @@ const jwt = require('jsonwebtoken');
 
   exports.getAnggotaByNama = (req, res) => {
       const { nama } = req.params;
-      const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart WHERE nama_staff = ? ORDER BY anggota.depart_id, anggota.nim  ASC';
+      const sql = 'SELECT anggota.*, departemen.keterangan as nama_departemen, departemen.nilai as nilai FROM anggota JOIN departemen ON anggota.depart_id = departemen.id_depart WHERE nama_staff = ? ORDER BY anggota.depart_id, anggota.nim  ASC';
       db.query(sql, [nama], (err, result) => {
         if (err) return res.status(500).send(err);
         res.send(result);

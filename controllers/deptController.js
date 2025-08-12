@@ -10,6 +10,114 @@ exports.getDept = (req, res) => {
         });
     });
   };
+
+exports.addDept = async (req, res) => {
+    const {  nama, keterangan, nilai } = req.body;
+    try {
+      // Cek apakah user sudah ada
+      const sqlCheck = "SELECT * FROM departemen WHERE nama = ?";
+      db.query(sqlCheck, [nama], async (err, result) => {
+        if (err) {
+          console.error("DB Error:", err); // Menampilkan error DB ke console
+          return res.status(500).json({ message: "Gagal memeriksa Departemen" });
+        }
+  
+        if (result.length > 0) {
+          return res.status(400).json({ message: "Departemen sudah terdaftar" });
+        }
+
+        const sqlInsert = "INSERT INTO departemen ( nama, keterangan, nilai ) VALUES ( ?, ?, ? )";
+        db.query(sqlInsert, [ nama, keterangan, nilai ], (err, result) => {
+          if (err) {
+            console.error("DB Error:", err); // Menampilkan error DB ke console
+            return res.status(500).json({ message: "Gagal menyimpan Departemen" });
+          }
+  
+          res.status(201).json({ message: "Tambah Departemen berhasil!" });
+        });
+      });
+    } catch (error) {
+      console.error("Error:", error); // Log error yang tidak terduga
+      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    }
+  };  
+
+// STORE DEPT
+exports.storeDept = async (req, res) => {
+  const { id } = req.params;
+  const sqlFind = "SELECT * FROM departemen WHERE id_depart = ?";
+  db.query(sqlFind, [id], (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Departemen tidak ditemukan" });
+
+    res.json(rows[0]); 
+  });
+  };
+
+// UPDATE DEPT
+exports.updateDept = async (req, res) => {
+  const { id, nama, keterangan, nilai } = req.body;
+
+  try {
+    // Cek apakah role dengan id itu ada
+    const sqlFind = "SELECT * FROM departemen WHERE id_depart = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal memeriksa Departemen" });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Departemen tidak ditemukan" });
+      }
+      
+      // Update
+      const sqlUpdate = "UPDATE departemen SET nama = ?, keterangan = ?, nilai = ? WHERE id_depart = ?";
+      db.query(sqlUpdate, [nama, keterangan, nilai, id], (err) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal mengubah Departemen" });
+        }
+        res.json({ message: "Update Departemen berhasil!" });
+      });
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+  };
+
+// DELETE DEPT
+exports.deleteDept = async (req, res) => {
+  const { id } = req.params;       
+
+  try {
+    const sqlFind = "SELECT * FROM departemen WHERE id_depart = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal memeriksa Departemen" });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Departemen tidak ditemukan" });
+      }
+
+      // Hapus
+      const sqlDelete = "DELETE FROM departemen WHERE id_depart = ?";
+      db.query(sqlDelete, [id], (err) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal menghapus Departemen" });
+        }
+        res.json({ message: "Hapus Departemen berhasil!" });
+      });
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+  };
+
 exports.getPengurus = (req, res) => {
     const sql = 'SELECT p.*, d.nama as dept FROM pengurus AS p JOIN departemen AS d ON p.dept_id = d.id_depart';
     db.query(sql, (err, result) => {

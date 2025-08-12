@@ -18,7 +18,11 @@ ac.grant('admin')
 
 ac.grant('superadmin')
     .extend('admin')
-    .readAny('penilaian');
+    .readAny('departemen')
+    .createAny('departemen')
+    .updateAny('departemen')
+    .deleteAny('departemen')
+    .readAny('departemen');
 
 ac.grant('dosen')
   .extend('user')

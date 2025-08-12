@@ -726,20 +726,44 @@ exports.updateNilai = (req, res) => {
     return res.status(400).json({ error: "ID dan nilai diperlukan" });
   }
 
-  const sql = "UPDATE detail_penilaian SET nilai = ? WHERE id_detail_penilaian = ?";
+  // Ambil bobot dari tabel penilaian berdasarkan detail_penilaian
+  const getBobotSQL = `
+    SELECT m.bobot FROM detail_penilaian dp JOIN matriks_penilaian m ON dp.matriks_id = m.id_matriks
+    WHERE dp.id_detail_penilaian = ?
+  `;
 
-  db.query(sql, [nilai, id], (err, result) => {
+  db.query(getBobotSQL, [id], (err, results) => {
     if (err) {
-      console.error("❌ Gagal update nilai:", err);
-      return res.status(500).json({ error: "Gagal update nilai" });
+      console.error("❌ Gagal mengambil bobot:", err);
+      return res.status(500).json({ error: "Gagal mengambil bobot" });
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "ID tidak ditemukan" });
+    if (results.length === 0) {
+      return res.status(404).json({ error: "ID detail penilaian tidak ditemukan" });
     }
 
-    res.status(200).json({ message: "✅ Nilai berhasil diperbarui" });
-  });
+    const bobot = results[0].bobot;
+
+    // Validasi nilai tidak boleh melebihi bobot
+    if (Number(nilai) > Number(bobot)) {
+      return res.status(400).json({ error: `Nilai tidak boleh melebihi bobot (${bobot})` });
+    }
+
+    const sql = "UPDATE detail_penilaian SET nilai = ? WHERE id_detail_penilaian = ?";
+  
+    db.query(sql, [nilai, id], (err, result) => {
+      if (err) {
+        console.error("❌ Gagal update nilai:", err);
+        return res.status(500).json({ error: "Gagal update nilai" });
+      }
+  
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "ID tidak ditemukan" });
+      }
+  
+      res.status(200).json({ message: "✅ Nilai berhasil diperbarui" });
+    });
+  })
 };
 
 exports.updateNilaiDept = (req, res) => {
@@ -750,20 +774,44 @@ exports.updateNilaiDept = (req, res) => {
     return res.status(400).json({ error: "ID dan nilai diperlukan" });
   }
 
-  const sql = "UPDATE detail_penilaian_departemen SET nilai = ? WHERE id_detail_penilaian = ?";
+  const getBobotSQL = `
+    SELECT m.bobot FROM detail_penilaian_departemen dp JOIN matriks_penilaian m ON dp.matriks_id = m.id_matriks
+    WHERE dp.id_detail_penilaian = ?
+  `;
 
-  db.query(sql, [nilai, id], (err, result) => {
+  db.query(getBobotSQL, [id], (err, results) => {
     if (err) {
-      console.error("❌ Gagal update nilai:", err);
-      return res.status(500).json({ error: "Gagal update nilai" });
+      console.error("❌ Gagal mengambil bobot:", err);
+      return res.status(500).json({ error: "Gagal mengambil bobot" });
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "ID tidak ditemukan" });
+    if (results.length === 0) {
+      return res.status(404).json({ error: "ID detail penilaian tidak ditemukan" });
     }
 
-    res.status(200).json({ message: "✅ Nilai berhasil diperbarui" });
-  });
+    const bobot = results[0].bobot;
+
+    // Validasi nilai tidak boleh melebihi bobot
+    if (Number(nilai) > Number(bobot)) {
+      return res.status(400).json({ error: `Nilai tidak boleh melebihi bobot (${bobot})` });
+    }
+
+    const sql = "UPDATE detail_penilaian_departemen SET nilai = ? WHERE id_detail_penilaian = ?";
+  
+    db.query(sql, [nilai, id], (err, result) => {
+      if (err) {
+        console.error("❌ Gagal update nilai:", err);
+        return res.status(500).json({ error: "Gagal update nilai" });
+      }
+  
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "ID tidak ditemukan" });
+      }
+  
+      res.status(200).json({ message: "✅ Nilai berhasil diperbarui" });
+    });
+  })
+
 };
 
 exports.addMatriks = async (req, res) => {
@@ -796,253 +844,282 @@ exports.addMatriks = async (req, res) => {
       console.error("Error:", error); // Log error yang tidak terduga
       res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
-  };  
+};  
 
-  // STORE ROLE 
-  exports.storeMatriks = async (req, res) => {
-    const { id } = req.params;
+// STORE ROLE 
+exports.storeMatriks = async (req, res) => {
+  const { id } = req.params;
+  const sqlFind = "SELECT * FROM matriks_penilaian WHERE id_matriks = ?";
+  db.query(sqlFind, [id], (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Matrik tidak ditemukan" });
+
+    res.json(rows[0]); 
+  });
+};
+
+// UPDATE ROLE 
+exports.updateMatriks = async (req, res) => {
+  const { id, nama, bobot } = req.body;
+
+  try {
+    // Cek apakah role dengan id itu ada
     const sqlFind = "SELECT * FROM matriks_penilaian WHERE id_matriks = ?";
     db.query(sqlFind, [id], (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (rows.length === 0)
-        return res.status(404).json({ message: "Matrik tidak ditemukan" });
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal memeriksa matriks" });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Matriks tidak ditemukan" });
+      }
 
-      res.json(rows[0]); 
+      // Update
+      const sqlUpdate = "UPDATE matriks_penilaian SET nama = ?, bobot = ? WHERE id_matriks = ?";
+      db.query(sqlUpdate, [nama, bobot, id], (err) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal mengubah matriks" });
+        }
+        res.json({ message: "Update Matriks berhasil!" });
+      });
     });
-  };
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+};
 
-  // UPDATE ROLE 
-  exports.updateMatriks = async (req, res) => {
-    const { id, nama, bobot } = req.body;
+// DELETE ROLE
+exports.deleteMatriks = async (req, res) => {
+  const { id } = req.params;       
 
-    try {
-      // Cek apakah role dengan id itu ada
-      const sqlFind = "SELECT * FROM matriks_penilaian WHERE id_matriks = ?";
-      db.query(sqlFind, [id], (err, rows) => {
+  try {
+    const sqlFind = "SELECT * FROM matriks_penilaian WHERE id_matriks = ?";
+    db.query(sqlFind, [id], (err, rows) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal memeriksa matriks" });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Matriks tidak ditemukan" });
+      }
+
+      // Hapus
+      const sqlDelete = "DELETE FROM matriks_penilaian WHERE id_matriks = ?";
+      db.query(sqlDelete, [id], (err) => {
         if (err) {
           console.error("DB Error:", err);
-          return res.status(500).json({ message: "Gagal memeriksa matriks" });
+          return res.status(500).json({ message: "Gagal menghapus matriks" });
         }
-        if (rows.length === 0) {
-          return res.status(404).json({ message: "Matriks tidak ditemukan" });
-        }
-
-        // Update
-        const sqlUpdate = "UPDATE matriks_penilaian SET nama = ?, bobot = ? WHERE id_matriks = ?";
-        db.query(sqlUpdate, [nama, bobot, id], (err) => {
-          if (err) {
-            console.error("DB Error:", err);
-            return res.status(500).json({ message: "Gagal mengubah matriks" });
-          }
-          res.json({ message: "Update Matriks berhasil!" });
-        });
+        res.json({ message: "Hapus Matriks berhasil!" });
       });
-    } catch (error) {
-      console.error("Error:", error);
-      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+};
+
+exports.generatePenilaian = async (req, res) => {
+  // console.log("MASUK TEMPLATE STAFF");
+  try {
+    const { startMonth, endMonth } = req.body; // Angka 1-12
+    const year = new Date().getFullYear();
+
+    if (!startMonth || !endMonth || startMonth < 1 || endMonth > 12 || startMonth > endMonth) {
+      return res.status(400).json({ success: false, message: "Periode bulan tidak valid." });
     }
-  };
 
-  // DELETE ROLE
-  exports.deleteMatriks = async (req, res) => {
-    const { id } = req.params;       
-
-    try {
-      const sqlFind = "SELECT * FROM matriks_penilaian WHERE id_matriks = ?";
-      db.query(sqlFind, [id], (err, rows) => {
-        if (err) {
-          console.error("DB Error:", err);
-          return res.status(500).json({ message: "Gagal memeriksa matriks" });
-        }
-        if (rows.length === 0) {
-          return res.status(404).json({ message: "Matriks tidak ditemukan" });
-        }
-
-        // Hapus
-        const sqlDelete = "DELETE FROM matriks_penilaian WHERE id_matriks = ?";
-        db.query(sqlDelete, [id], (err) => {
-          if (err) {
-            console.error("DB Error:", err);
-            return res.status(500).json({ message: "Gagal menghapus matriks" });
-          }
-          res.json({ message: "Hapus Matriks berhasil!" });
-        });
+    // Ambil semua anggota untuk periode tahun sekarang
+    const anggotaList = await new Promise((resolve, reject) => {
+      db.query("SELECT id_anggota FROM anggota WHERE periode = ?", [year], (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
       });
-    } catch (error) {
-      console.error("Error:", error);
-      res.status(500).json({ message: "Terjadi kesalahan pada server" });
+    });
+
+    if (anggotaList.length === 0) {
+      return res.status(404).json({ success: false, message: "Tidak ada anggota untuk periode tahun ini." });
     }
-  };
 
-  exports.generatePenilaian = async (req, res) => {
-    // console.log("MASUK TEMPLATE STAFF");
-    try {
-      const { startMonth, endMonth } = req.body; // Angka 1-12
-      const year = new Date().getFullYear();
-
-      if (!startMonth || !endMonth || startMonth < 1 || endMonth > 12 || startMonth > endMonth) {
-        return res.status(400).json({ success: false, message: "Periode bulan tidak valid." });
-      }
-
-      // Ambil semua anggota untuk periode tahun sekarang
-      const anggotaList = await new Promise((resolve, reject) => {
-        db.query("SELECT id_anggota FROM anggota WHERE periode = ?", [year], (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
+    const pengurusList = await new Promise((resolve, reject) => {
+      db.query("SELECT id_pengurus FROM pengurus", (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
       });
+    });
 
-      if (anggotaList.length === 0) {
-        return res.status(404).json({ success: false, message: "Tidak ada anggota untuk periode tahun ini." });
-      }
+    if (pengurusList.length === 0) {
+      return res.status(404).json({ success: false, message: "Tidak ada pengurus terdaftar." });
+    }
 
-      const pengurusList = await new Promise((resolve, reject) => {
-        db.query("SELECT id_pengurus FROM pengurus", (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-      });
+    const logs = [];
 
-      if (pengurusList.length === 0) {
-        return res.status(404).json({ success: false, message: "Tidak ada pengurus terdaftar." });
-      }
+    for (let month = startMonth; month <= endMonth; month++) {
+      const waktu = new Date(year, month - 1, 1);
+      let duplikatDitemukan = false;
 
-      const logs = [];
-
-      for (let month = startMonth; month <= endMonth; month++) {
-        const waktu = new Date(year, month - 1, 1);
-        let duplikatDitemukan = false;
-
-        for (const anggota of anggotaList) {
-          for (const pengurus of pengurusList) {
-            // 👉 Cek apakah sudah ada penilaian untuk kombinasi ini
-            const [existing] = await new Promise((resolve, reject) => {
-              db.query(
-                `SELECT id_penilaian FROM penilaian 
-                WHERE anggota_id = ? AND pengurus_id = ? AND MONTH(waktu) = ? AND YEAR(waktu) = ?`,
-                [anggota.id_anggota, pengurus.id_pengurus, month, year],
-                (err, result) => {
-                  if (err) return reject(err);
-                  resolve(result);
-                }
-              );
-            });
-
-            if (existing) {
-              duplikatDitemukan = true;
-              break;
-            }
-          }
-          if (duplikatDitemukan) break;
-        }
-
-        if (duplikatDitemukan) {
-          return res.status(409).json({
-            success: false,
-            message: `Template penilaian untuk bulan ${month} tahun ${year} sudah tersedia. Tidak dapat digandakan.`,
+      for (const anggota of anggotaList) {
+        for (const pengurus of pengurusList) {
+          // 👉 Cek apakah sudah ada penilaian untuk kombinasi ini
+          const [existing] = await new Promise((resolve, reject) => {
+            db.query(
+              `SELECT id_penilaian FROM penilaian 
+              WHERE anggota_id = ? AND pengurus_id = ? AND MONTH(waktu) = ? AND YEAR(waktu) = ?`,
+              [anggota.id_anggota, pengurus.id_pengurus, month, year],
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+              }
+            );
           });
-        }
 
-        // ✅ Jika tidak ada duplikat, lanjut buat template
-        for (const anggota of anggotaList) {
-          for (const pengurus of pengurusList) {
-            const penilaianResult = await new Promise((resolve, reject) => {
+          if (existing) {
+            duplikatDitemukan = true;
+            break;
+          }
+        }
+        if (duplikatDitemukan) break;
+      }
+
+      if (duplikatDitemukan) {
+        return res.status(409).json({
+          success: false,
+          message: `Template penilaian untuk bulan ${month} tahun ${year} sudah tersedia. Tidak dapat digandakan.`,
+        });
+      }
+
+      // ✅ Jika tidak ada duplikat, lanjut buat template
+      for (const anggota of anggotaList) {
+        for (const pengurus of pengurusList) {
+          const penilaianResult = await new Promise((resolve, reject) => {
+            db.query(
+              "INSERT INTO penilaian (anggota_id, waktu, pengurus_id) VALUES (?, ?, ?)",
+              [anggota.id_anggota, waktu, pengurus.id_pengurus],
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+              }
+            );
+          });
+
+          const penilaian_id = penilaianResult.insertId;
+
+          for (let matriks_id = 1; matriks_id <= 7; matriks_id++) {
+            await new Promise((resolve, reject) => {
               db.query(
-                "INSERT INTO penilaian (anggota_id, waktu, pengurus_id) VALUES (?, ?, ?)",
-                [anggota.id_anggota, waktu, pengurus.id_pengurus],
-                (err, result) => {
+                "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
+                [penilaian_id, matriks_id],
+                (err) => {
                   if (err) return reject(err);
-                  resolve(result);
+                  resolve();
                 }
               );
             });
-
-            const penilaian_id = penilaianResult.insertId;
-
-            for (let matriks_id = 1; matriks_id <= 7; matriks_id++) {
-              await new Promise((resolve, reject) => {
-                db.query(
-                  "INSERT INTO detail_penilaian (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
-                  [penilaian_id, matriks_id],
-                  (err) => {
-                    if (err) return reject(err);
-                    resolve();
-                  }
-                );
-              });
-            }
-
-            logs.push({ anggota_id: anggota.id_anggota, pengurus_id: pengurus.id_pengurus, bulan: month });
           }
-        }
 
-        // === Tambahan: Penilaian untuk Departemen ===
-        const departemenList = await new Promise((resolve, reject) => {
-          db.query("SELECT id_depart FROM departemen", (err, result) => {
+          logs.push({ anggota_id: anggota.id_anggota, pengurus_id: pengurus.id_pengurus, bulan: month });
+        }
+      }
+
+      // === Tambahan: Penilaian untuk Departemen ===
+      const departemenList = await new Promise((resolve, reject) => {
+        db.query("SELECT id_depart FROM departemen", (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+      });
+      
+      const penilaiUtama = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT id_user FROM user WHERE keterangan IN (?, ?, ?, ?)`,
+          ["Ketua Umum", "Wakil Ketua Umum", "Sekretaris Umum", "Bendahara Umum"],
+          (err, result) => {
             if (err) return reject(err);
             resolve(result);
+          }
+        );
+      });
+
+      for (const departemen of departemenList) {
+        const waktu = new Date(year, month - 1, 1);
+
+        for (const penilai of penilaiUtama) {
+          const insertPenilaianDepart = await new Promise((resolve, reject) => {
+            db.query(
+              "INSERT INTO penilaian_departemen (departemen_id, waktu, user_id) VALUES (?, ?, ?)",
+              [departemen.id_depart, waktu, penilai.id_user],
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+              }
+            );
           });
-        });
-        
-        const penilaiUtama = await new Promise((resolve, reject) => {
-          db.query(
-            `SELECT id_user FROM user WHERE keterangan IN (?, ?, ?, ?)`,
-            ["Ketua Umum", "Wakil Ketua Umum", "Sekretaris Umum", "Bendahara Umum"],
-            (err, result) => {
-              if (err) return reject(err);
-              resolve(result);
-            }
-          );
-        });
-
-        for (const departemen of departemenList) {
-          const waktu = new Date(year, month - 1, 1);
-
-          for (const penilai of penilaiUtama) {
-            const insertPenilaianDepart = await new Promise((resolve, reject) => {
+          const penilaianDepartemenId = insertPenilaianDepart.insertId;
+  
+          // Asumsikan matriks id 1-7
+          for (let matriks_id = 8; matriks_id <= 13; matriks_id++) {
+            await new Promise((resolve, reject) => {
               db.query(
-                "INSERT INTO penilaian_departemen (departemen_id, waktu, user_id) VALUES (?, ?, ?)",
-                [departemen.id_depart, waktu, penilai.id_user],
-                (err, result) => {
+                "INSERT INTO detail_penilaian_departemen (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
+                [penilaianDepartemenId, matriks_id],
+                (err) => {
                   if (err) return reject(err);
-                  resolve(result);
+                  resolve();
                 }
               );
             });
-            const penilaianDepartemenId = insertPenilaianDepart.insertId;
-    
-            // Asumsikan matriks id 1-7
-            for (let matriks_id = 8; matriks_id <= 13; matriks_id++) {
-              await new Promise((resolve, reject) => {
-                db.query(
-                  "INSERT INTO detail_penilaian_departemen (penilaian_id, matriks_id, nilai) VALUES (?, ?, 0)",
-                  [penilaianDepartemenId, matriks_id],
-                  (err) => {
-                    if (err) return reject(err);
-                    resolve();
-                  }
-                );
-              });
-            }
-    
-            logs.push({
-              departemen_id: departemen.id_depart,
-              bulan: month,
-              tipe: 'departemen'
-            });
           }
+  
+          logs.push({
+            departemen_id: departemen.id_depart,
+            bulan: month,
+            tipe: 'departemen'
+          });
         }
       }
-
-
-      res.json({
-        success: true,
-        message: `Template penilaian berhasil dibuat untuk bulan ${startMonth} hingga ${endMonth}`,
-        created: logs.length,
-        detail: logs
-      });
-    } catch (err) {
-      console.log("Error generate template penilaian:", err);
-      res.status(500).json({ success: false, message: err.message });
     }
-  };
+
+
+    res.json({
+      success: true,
+      message: `Template penilaian berhasil dibuat untuk bulan ${startMonth} hingga ${endMonth}`,
+      created: logs.length,
+      detail: logs
+    });
+  } catch (err) {
+    console.log("Error generate template penilaian:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.storePenilaian = async (req, res) => {
+  const sqlFind = "SELECT DISTINCT MONTHNAME(waktu) AS bulan, waktu from penilaian ORDER BY waktu ASC";
+  db.query(sqlFind, (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Bulan tidak ditemukan" });
+
+    res.json(rows); 
+  });
+};
+
+exports.deletePenilaian = async (req, res) => {
+  const { bulan } = req.params;
+  try {
+    // Hapus
+    const sqlDelete = "DELETE FROM penilaian WHERE MONTHNAME(waktu) = ?";
+    db.query(sqlDelete, [bulan], (err) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Gagal menghapus bulan" });
+      }
+      res.json({ message: "Hapus bulan berhasil!" });
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+};
