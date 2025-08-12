@@ -1099,8 +1099,8 @@ exports.storePenilaian = async (req, res) => {
   const sqlFind = "SELECT DISTINCT MONTHNAME(waktu) AS bulan, waktu from penilaian ORDER BY waktu ASC";
   db.query(sqlFind, (err, rows) => {
     if (err) return res.status(500).json({ message: err.message });
-    if (rows.length === 0)
-      return res.status(404).json({ message: "Bulan tidak ditemukan" });
+    // if (rows.length === 0)
+    //   return res.status(404).json({ message: "Bulan tidak ditemukan" });
 
     res.json(rows); 
   });
@@ -1111,12 +1111,19 @@ exports.deletePenilaian = async (req, res) => {
   try {
     // Hapus
     const sqlDelete = "DELETE FROM penilaian WHERE MONTHNAME(waktu) = ?";
-    db.query(sqlDelete, [bulan], (err) => {
-      if (err) {
-        console.error("DB Error:", err);
-        return res.status(500).json({ message: "Gagal menghapus bulan" });
-      }
-      res.json({ message: "Hapus bulan berhasil!" });
+    db.query(sqlDelete, [bulan], (err1) => {
+      if (err1) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal menghapus bulan staff" });
+        }
+      const deleteDepart = "DELETE FROM penilaian_departemen WHERE MONTHNAME(waktu) = ?";
+      db.query(deleteDepart, [bulan], (err) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Gagal menghapus bulan departemen" });
+        }
+        res.json({ message: "Hapus bulan berhasil!" });
+      })
     });
   } catch (error) {
     console.error("Error:", error);

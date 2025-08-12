@@ -26,7 +26,7 @@ exports.getReview = (req, res) => {
 
 exports.addReview = async (req, res) => {
   const { userLogin, target, month, isi } = req.body;
-  console.log(userLogin, target, month, isi);
+  // console.log(userLogin, target, month, isi);
   try {
     
     // Cek apakah sudah ada review di bulan yang sama
