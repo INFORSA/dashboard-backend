@@ -1,31 +1,43 @@
 const AccessControl = require('accesscontrol');
-const ac = new AccessControl();
+const db = require('../config/db');
 
-ac.grant('user')
-  .readOwn('profile');
+async function loadAccessControl() {
+  const ac = new AccessControl();
 
-ac.grant('staff')
-  .extend('user')
-  .readOwn('penilaian');
+  const [roles] = await db.promise().query('SELECT * FROM role');
+  const [permissions] = await db.promise().query('SELECT * FROM permissions');
+  const [rolePermissions] = await db.promise().query('SELECT * FROM role_permissions');
 
-ac.grant('admin')
-  .extend('staff')
-  .createAny('penilaian')
-  .updateAny('penilaian')
-  .deleteAny('penilaian')
-  .readAny('penilaian')
-  .readAny('profile');
+  // console.log(roles)
+  // console.log(permissions)
+  // console.log(rolePermissions)
 
-ac.grant('superadmin')
-    .extend('admin')
-    .readAny('departemen')
-    .createAny('departemen')
-    .updateAny('departemen')
-    .deleteAny('departemen')
-    .readAny('departemen');
+  // Mapping role → permission list
+  const roleMap = {};
+  rolePermissions.forEach(rp => {
+    const role = roles.find(r => r.id_role === rp.role_id)?.nama_role;
+    const perm = permissions.find(p => p.id_permission === rp.permission_id);
 
-ac.grant('dosen')
-  .extend('user')
-  .readAny('penilaian');
+    if (!role || !perm) return;
 
-module.exports = ac;
+    // Gabungkan action + possession
+    const grantAction = perm.action + perm.possession.charAt(0).toUpperCase() + perm.possession.slice(1); // read + Own = readOwn
+
+    if (!roleMap[role]) roleMap[role] = [];
+    roleMap[role].push({
+      resource: perm.resource,
+      action: grantAction
+    });
+  });
+
+  // Masukkan ke AccessControl
+  Object.keys(roleMap).forEach(role => {
+    roleMap[role].forEach(perm => {
+      ac.grant(role)[perm.action](perm.resource);
+    });
+  });
+  // console.log(ac)
+  return ac;
+}
+
+module.exports = loadAccessControl;

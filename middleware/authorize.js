@@ -1,24 +1,30 @@
-const ac = require('../permissions/roles');
+const loadAccessControl = require('../permissions/roles');
+
+let acInstance = null;
+
+// Load AC global sekali saat server start
+async function getAC() {
+  if (!acInstance) {
+    acInstance = await loadAccessControl();
+  }
+  return acInstance;
+}
 
 function authorize(action, resource) {
-  return (req, res, next) => {
-    const role = req.user?.role; // Memeriksa role dari req.user yang sudah terisi
-    const username = req.user?.username;
+  return async (req, res, next) => {
+    const ac = await getAC(); // pakai global instance
+    const role = req.user?.role?.toLowerCase();
     if (!role) return res.status(401).json({ message: 'Unauthorized' });
 
-    // if (role === 'superadmin') {
-    //   const permission = ac.can(role)['readAny'](resource);
-    //   if (permission.granted) return next();
-    // }
+    const permission = ac.can(role)[action]?.(resource);
 
-    const permission = ac.can(role)[action](resource); // Memeriksa izin berdasarkan role, action, dan resource
-    if (!permission.granted) {
+    // console.log('Authorize check:', { role, action, resource, permission });
+
+    if (!permission || !permission.granted) {
       return res.status(403).json({ message: 'Forbidden: No permission' });
     }
-    if (action.includes('Own')) {
-      return next();
-    }
-    next(); // Jika ada izin, lanjutkan ke handler berikutnya
+
+    next();
   };
 }
 
