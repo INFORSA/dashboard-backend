@@ -6,6 +6,7 @@ ac.grant('user')
 
 ac.grant('staff')
   .extend('user')
+  .updateOwn('profile')
   .readOwn('penilaian');
 
 ac.grant('admin')

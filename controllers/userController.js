@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
   exports.getUser = (req, res) => {
       const sql = 'SELECT user.*, role.nama_role FROM user JOIN role ON user.role = role.id_role ORDER BY user.role';
